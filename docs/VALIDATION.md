@@ -2,6 +2,14 @@
 
 This beta requires Tessera plugin API 0.14. It must still be tested on a physical Tessera device before a stable release.
 
+## Completed results
+
+On 18 October 2026 (Australia/Sydney), [CI run 39070777585](https://github.com/dark-matter-design/tessera-watch-clock-screensaver/actions/runs/39070777585) passed the official checker, native C++ geometry tests and both strict real-firmware benches for source revision `4598934`. Together the benches produced **40 screensaver images with zero warnings**: eight each for CYD, Guition 4-inch, Guition 7-inch JC1060P470, Guition 7-inch JC1060P470 V2 and Guition 10.1-inch. Each model showed all four preview scenarios in both screen themes, with zero findings. The standing Waveshare 4.3-inch built successfully but has no standby, so its four informational findings correctly report that it cannot show a screensaver.
+
+The generated store picture and the 4-inch, 7-inch and 10-inch previews were visually inspected. The plugin uses Tessera's built-in font for the date and native LVGL line objects for the original vector outlines. The store picture is generated from these actual firmware screenshots; its rendering revision `bf356f8` has identical component code to the final bench revision.
+
+## Coverage
+
 Automated checks:
 
 - Official Tessera manifest and source checker.

@@ -2,6 +2,10 @@
 
 A native screensaver face for Tessera, ported from [Watch Clock for Kiosk Satellite](https://github.com/dark-matter-design/kiosk-satellite-watch-clock-screensaver). The original oversized geometric 12, 3, 6 and 9 are drawn as vector polylines, with rounded white hour and minute hands, a fine seconds hand and an optional date. No browser, external font, image download or Android component is needed.
 
+![Watch Clock rendered by the real Tessera firmware](store.png)
+
+Full firmware previews: [4-inch square](docs/previews/guition-4-inch.png), [7-inch](docs/previews/guition-7-inch.png), [10.1-inch adaptive](docs/previews/guition-10-inch-adaptive.png).
+
 **Requires Tessera plugin API 0.14 or newer.** Tessera rejects installation on older firmware. Check the API supported by your installed Tessera version; use the Tessera dev channel if its stable release does not yet include screensaver plugins.
 
 ## Set up
