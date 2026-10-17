@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: dark-matter-design/homeassistant_espscreen
-          ref: 4e70f853
+          ref: 4e70f8536c2f545b72424d9bc1deb08a84586efc
           path: .research/tessera
       - name: Apply live options support
         run: git -C .research/tessera apply ../../compatibility/tessera-live-options.patch
@@ -88,3 +88,4 @@ jobs:
             .preview/
             store.png
           include-hidden-files: true
+
