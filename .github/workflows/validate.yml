@@ -6,9 +6,13 @@ on:
 permissions:
   contents: read
 jobs:
-  validate:
+  preview:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        board: [cyd, guition, jc1060p470, jc1060p470v2, jc8012p4a1]
     env:
       TESSERA_REF: main
     steps:
@@ -16,8 +20,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Get official plugin tools
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           repository: MaxGramser/tessera-plugins
           ref: 85112ffc7d9146d33fe6ee22c6f3faec710ed80a
@@ -30,18 +33,38 @@ jobs:
       - name: Install preview dependencies
         run: sudo apt-get update && sudo apt-get install -y libsdl2-dev
       - name: Preview real firmware
-        run: python .research/tessera-plugins/tools/preview.py . --strict
-      - name: Make store picture
-        run: python .research/tessera-plugins/tools/store_image.py . --from .preview
-      - name: Preview Guition 7-inch models
-        run: python .research/tessera-plugins/tools/preview.py . --board jc1060p470 --board jc1060p470v2 --strict --out .preview-guition7
+        run: python .research/tessera-plugins/tools/preview.py . --board ${{ matrix.board }} --strict
       - uses: actions/upload-artifact@v4
         if: always()
+        with:
+          name: watch-clock-${{ matrix.board }}
+          path: .preview/
+          include-hidden-files: true
+          if-no-files-found: ignore
+  store:
+    needs: preview
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/checkout@v4
+        with:
+          repository: MaxGramser/tessera-plugins
+          ref: 85112ffc7d9146d33fe6ee22c6f3faec710ed80a
+          path: .research/tessera-plugins
+      - run: pip install pyyaml pillow
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: watch-clock-*
+          path: .research/bench-results
+      - run: python tools/merge_previews.py .research/bench-results .preview
+      - run: python .research/tessera-plugins/tools/store_image.py . --from .preview
+      - uses: actions/upload-artifact@v4
         with:
           name: watch-clock-preview
           path: |
             .preview/
-            .preview-guition7/
             store.png
           include-hidden-files: true
-          if-no-files-found: ignore

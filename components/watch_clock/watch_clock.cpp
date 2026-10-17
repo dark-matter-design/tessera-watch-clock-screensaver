@@ -19,6 +19,7 @@ class WatchSaver : public tessera::Saver {
   void show(const tessera::SaverContext &c) override {
     seconds_ = c.options["seconds"] | true;
     date_enabled_ = c.options["date"] | true;
+    const bool inverted = c.options["invert"] | false;
     const char *layout = c.options["layout"] | "original";
     const char *alignment = c.options["alignment"] | "centre";
     int align = 0;
@@ -27,41 +28,57 @@ class WatchSaver : public tessera::Saver {
     if (!std::strcmp(alignment, "top")) align = 3;
     if (!std::strcmp(alignment, "bottom")) align = 4;
     // Reserve room for Tessera's millimetre drift at all scales and alignments.
-    const int margin = ui::mm(2);
+    margin_ = ui::mm(2);
+    const int margin = margin_;
     art_ = geometry::layout(std::max(1, c.width - 2 * margin), std::max(1, c.height - 2 * margin),
                             c.options["scale"] | 100.0f, !std::strcmp(layout, "adaptive"), align);
-    art_.x += margin; art_.y += margin;
     cx_ = art_.x + art_.width / 2; cy_ = art_.y + art_.height / 2;
     const char *colour = c.options["numerals"] | "green";
     theme::Role role = theme::MARK_GREEN;
-    if (!std::strcmp(colour, "white")) role = theme::INK_SOFT;
+    if (!std::strcmp(colour, "white")) role = theme::QR_LIGHT;
     if (!std::strcmp(colour, "blue")) role = theme::MARK_BLUE;
     if (!std::strcmp(colour, "purple")) role = theme::MARK_PURPLE;
     if (!std::strcmp(colour, "amber")) role = theme::MARK_AMBER;
-    numeral(c.parent, geometry::NUMERAL_0, points_0_, 10 + art_.dx, 2, role);
-    numeral(c.parent, geometry::NUMERAL_1, points_1_, 10 + art_.dx, 2, role);
-    numeral(c.parent, geometry::NUMERAL_2, points_2_, 2, -13 + art_.dy, role);
-    numeral(c.parent, geometry::NUMERAL_3, points_3_, 14 + 2 * art_.dx, -13 + art_.dy, role);
-    numeral(c.parent, geometry::NUMERAL_4, points_4_, 10 + art_.dx, -4 + 2 * art_.dy, role);
+    const theme::Role background = inverted ? role : theme::CAMERA_PAGE;
+    const theme::Role ink = inverted ? theme::QR_DARK : role;
+    const theme::Role hand_ink = inverted && !std::strcmp(colour, "white") ? theme::QR_DARK : theme::CLOCK_HAND;
+    auto *ground = ui::block(c.parent, background);
+    lv_obj_set_style_radius(ground, 0, 0);
+    lv_obj_set_size(ground, c.width, c.height);
+    // Keep the solid background fixed. Move only this inset transparent group,
+    // so inversion fills the glass without a black stripe at the drifted edge.
+    face_ = lv_obj_create(c.parent);
+    lv_obj_remove_style_all(face_);
+    lv_obj_remove_flag(face_, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_remove_flag(face_, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_size(face_, c.width - 2 * margin, c.height - 2 * margin);
+    lv_obj_set_pos(face_, margin, margin);
+    numeral(face_, geometry::NUMERAL_0, points_0_, 10 + art_.dx, 2, ink);
+    numeral(face_, geometry::NUMERAL_1, points_1_, 10 + art_.dx, 2, ink);
+    numeral(face_, geometry::NUMERAL_2, points_2_, 2, -13 + art_.dy, ink);
+    numeral(face_, geometry::NUMERAL_3, points_3_, 14 + 2 * art_.dx, -13 + art_.dy, ink);
+    numeral(face_, geometry::NUMERAL_4, points_4_, 10 + art_.dx, -4 + 2 * art_.dy, ink);
     const char *position = c.options["date_position"] | "bottom_left";
     date_right_ = std::strstr(position, "right") != nullptr;
     date_top_ = std::strstr(position, "top") != nullptr;
     const char *format = c.options["date_format"] | "weekday";
     date_format_ = !std::strcmp(format, "month") ? 1 : !std::strcmp(format, "numeric") ? 2 : 0;
+    const char *date_size = c.options["date_size"] | "large";
+    date_size_ = !std::strcmp(date_size, "small") ? 0 : !std::strcmp(date_size, "medium") ? 1 : 2;
     utc_ = !std::strcmp(c.options["timezone"] | "screen", "utc");
-    date_ = ui::label(c.parent, Font::BODY, theme::INK_SOFT);
+    date_ = ui::label(face_, Font::VALUE, ink);
     lv_obj_add_flag(date_, LV_OBJ_FLAG_HIDDEN);
-    hour_ = line(c.parent, 6.2f * art_.unit, theme::INK);
-    minute_ = line(c.parent, 6.2f * art_.unit, theme::INK);
-    ring_ = ui::block(c.parent, theme::CAMERA_PAGE);
+    hour_ = line(face_, 6.2f * art_.unit, hand_ink);
+    minute_ = line(face_, 6.2f * art_.unit, hand_ink);
+    ring_ = ui::block(face_, background);
     const int diameter = std::max(3, static_cast<int>(9.2f * art_.unit));
     lv_obj_set_size(ring_, diameter, diameter);
     lv_obj_set_pos(ring_, static_cast<int>(cx_ - diameter / 2.0f), static_cast<int>(cy_ - diameter / 2.0f));
     lv_obj_set_style_radius(ring_, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_border_width(ring_, std::max(1, static_cast<int>(1.2f * art_.unit)), 0);
-    lv_obj_set_style_border_color(ring_, ui::color(theme::INK), 0);
-    second_ = line(c.parent, .85f * art_.unit, theme::INK_SOFT);
-    pivot_ = ui::block(c.parent, theme::INK);
+    lv_obj_set_style_border_color(ring_, ui::color(hand_ink), 0);
+    second_ = line(face_, .85f * art_.unit, inverted ? theme::QR_DARK : hand_ink);
+    pivot_ = ui::block(face_, hand_ink);
     const int dot = std::max(2, static_cast<int>(3.6f * art_.unit));
     lv_obj_set_size(pivot_, dot, dot);
     lv_obj_set_pos(pivot_, static_cast<int>(cx_ - dot / 2.0f), static_cast<int>(cy_ - dot / 2.0f));
@@ -70,6 +87,8 @@ class WatchSaver : public tessera::Saver {
   }
 
   void on_tick(uint32_t epoch) override {
+    const auto drift = tessera::drift(epoch);
+    lv_obj_set_pos(face_, margin_ + drift.x, margin_ + drift.y);
     if (!epoch) {
       set_hands_visible(false); visible(date_, false);
       return;
@@ -161,9 +180,19 @@ class WatchSaver : public tessera::Saver {
     ui::set_text(date_, text);
     const int inset = static_cast<int>(14 * art_.unit);
     const int room = std::max(1, static_cast<int>(art_.width) - 2 * inset);
-    const int width = std::min(room, ui::text_width(text, Font::BODY));
+    // Long formats and small scales step down to a built-in font that fits.
+    // Prefer a corner-sized label so it remains clear of the large 6 and 12.
+    const int corner = std::max(1, static_cast<int>(art_.width * .32f));
+    const Font fonts[] = {Font::VALUE, Font::HEADLINE, Font::TITLE, Font::BODY};
+    const int first = date_size_ == 0 ? 2 : date_size_ == 1 ? 1 : 0;
+    Font font = Font::BODY;
+    for (int i = first; i < 4; ++i) {
+      if (ui::text_width(text, fonts[i]) <= corner) { font = fonts[i]; break; }
+    }
+    ui::set_font(date_, font);
+    const int width = std::min(room, ui::text_width(text, font));
     const int x = static_cast<int>(art_.x) + (date_right_ ? static_cast<int>(art_.width) - inset - width : inset);
-    const int y = static_cast<int>(art_.y) + (date_top_ ? inset : static_cast<int>(art_.height) - inset - ui::line_height(Font::BODY));
+    const int y = static_cast<int>(art_.y) + (date_top_ ? inset : static_cast<int>(art_.height) - inset - ui::line_height(font));
     lv_obj_set_width(date_, std::max(1, width));
     lv_obj_set_pos(date_, x, y);
     visible(date_, true);
@@ -173,10 +202,11 @@ class WatchSaver : public tessera::Saver {
   float cx_ = 0, cy_ = 0;
   bool seconds_ = true, date_enabled_ = true, date_right_ = false, date_top_ = false, utc_ = false;
   int date_format_ = 0;
+  int date_size_ = 2, margin_ = 0;
   char date_text_[64]{};
   lv_point_precise_t points_0_[3]{}, points_1_[26]{}, points_2_[73]{}, points_3_[49]{}, points_4_[61]{};
   lv_point_precise_t hour_points_[2]{}, minute_points_[2]{}, second_points_[2]{};
-  lv_obj_t *hour_{}, *minute_{}, *second_{}, *ring_{}, *pivot_{}, *date_{};
+  lv_obj_t *face_{}, *hour_{}, *minute_{}, *second_{}, *ring_{}, *pivot_{}, *date_{};
 };
 void WatchClock::setup() {
   add_saver("watch", tessera::SaverStep::CLOCK, [this]() { return new WatchSaver(this); });

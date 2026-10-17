@@ -25,10 +25,10 @@
   },
   "app": {
     "name": "Watch Clock",
-    "summary": "Oversized geometric numerals and white analogue hands, with a date and adaptive spacing.",
+    "summary": "A watch face with geometric numerals, a readable coloured date and optional coloured background.",
     "saver_name": "Watch Clock",
-    "saver_example": "A watch face with 12, 3, 6 and 9, white hands and an optional date.",
-    "numerals": "Numeral colour",
+    "saver_example": "A geometric watch face with a coloured date and optional coloured background.",
+    "numerals": "Face colour",
     "green": "Green",
     "white": "White",
     "blue": "Blue",
@@ -59,6 +59,13 @@
     "timezone": "Time zone",
     "timezone_hint": "Screen follows Tessera time zone settings, including daylight saving. UTC always uses UTC.",
     "screen": "Screen time zone",
-    "utc": "UTC"
+    "utc": "UTC",
+    "invert": "Coloured background",
+    "invert_hint": "Fill the screen with the face colour; draw the numerals and date in black.",
+    "date_size": "Date size",
+    "date_size_hint": "Automatically fits longer dates and smaller clock scales.",
+    "small": "Small",
+    "medium": "Medium",
+    "large": "Large"
   }
 }

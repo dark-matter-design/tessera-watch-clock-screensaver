@@ -1,5 +1,5 @@
 id: watch_clock
-version: 0.1.0
+version: 0.2.0
 api: '0.14'
 icon: clock-outline
 maintainer: dark-matter-design
@@ -16,7 +16,7 @@ savers:
   name: saver_name
   icon: clock-outline
   step: clock
-  memory: 4096
+  memory: 4608
   example: saver_example
   options:
   - id: numerals
@@ -34,6 +34,11 @@ savers:
       label: purple
     - value: amber
       label: amber
+  - id: invert
+    kind: toggle
+    label: invert
+    hint: invert_hint
+    default: false
   - id: layout
     kind: choice
     label: layout
@@ -75,6 +80,18 @@ savers:
     kind: toggle
     label: date
     default: true
+  - id: date_size
+    kind: choice
+    label: date_size
+    hint: date_size_hint
+    default: large
+    choices:
+    - value: small
+      label: small
+    - value: medium
+      label: medium
+    - value: large
+      label: large
   - id: date_position
     kind: choice
     label: date_position
@@ -109,3 +126,4 @@ savers:
       label: screen
     - value: utc
       label: utc
+  moves: true

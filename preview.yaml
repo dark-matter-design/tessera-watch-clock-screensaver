@@ -1,5 +1,10 @@
 savers:
 - saver: watch
+  name: Green background
+  options:
+    invert: true
+  data: {}
+- saver: watch
   name: Original proportions
   data: {}
 - saver: watch
@@ -25,4 +30,12 @@ savers:
     date_format: numeric
     date_position: bottom_right
     numerals: amber
+  data: {}
+- saver: watch
+  name: Small numeric date
+  options:
+    scale: 50
+    date_format: numeric
+    invert: true
+    numerals: white
   data: {}
