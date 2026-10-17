@@ -39,3 +39,18 @@ savers:
     invert: true
     numerals: white
   data: {}
+- saver: watch
+  name: Top left date
+  options:
+    invert: true
+    date_position: top_left
+  data: {}
+- saver: watch
+  name: Top aligned numeric date
+  options:
+    invert: true
+    scale: 50
+    alignment: top
+    date_position: top_left
+    date_format: numeric
+  data: {}

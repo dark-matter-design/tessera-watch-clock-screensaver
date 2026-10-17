@@ -31,6 +31,7 @@ class WatchSaver : public tessera::Saver {
     margin_ = ui::mm(2);
     const int margin = margin_;
     face_height_ = c.height - 2 * margin;
+    face_width_ = c.width - 2 * margin;
     art_ = geometry::layout(std::max(1, c.width - 2 * margin), std::max(1, c.height - 2 * margin),
                             c.options["scale"] | 100.0f, !std::strcmp(layout, "adaptive"), align);
     cx_ = art_.x + art_.width / 2; cy_ = art_.y + art_.height / 2;
@@ -182,7 +183,12 @@ class WatchSaver : public tessera::Saver {
     const int room = std::max(1, static_cast<int>(art_.width) - 2 * inset);
     // Long formats and small scales step down to a built-in font that fits.
     // Prefer a corner-sized label so it remains clear of the large 6 and 12.
-    const int corner = std::max(1, static_cast<int>(art_.width * .36f));
+    // Clear the actual 12/6 outlines, including their half-stroke. The top
+    // left corner is narrower because the diagonal of the 1 reaches left.
+    const float left_outline = art_.x + ((date_top_ ? 54 : 72) + 10 + art_.dx - 3.2f) * art_.unit;
+    const float right_outline = art_.x + ((date_top_ ? 137 : 135) + 10 + art_.dx + 3.2f) * art_.unit;
+    const int corner = std::max(1, static_cast<int>(date_right_ ? art_.x + art_.width - inset - right_outline
+                                                              : left_outline - art_.x - inset));
     const Font fonts[] = {Font::VALUE, Font::HEADLINE, Font::TITLE, Font::BODY};
     const int first = date_size_ == 0 ? 2 : date_size_ == 1 ? 1 : 0;
     Font font = Font::BODY;
@@ -191,7 +197,7 @@ class WatchSaver : public tessera::Saver {
     }
     ui::set_font(date_, font);
     const int width = std::min(room, ui::text_width(text, font));
-    const int x = static_cast<int>(art_.x) + (date_right_ ? static_cast<int>(art_.width) - inset - width : inset);
+    int x = static_cast<int>(art_.x) + (date_right_ ? static_cast<int>(art_.width) - inset - width : inset);
     const int line_height = ui::line_height(font);
     int y = static_cast<int>(art_.y) + (date_top_ ? inset : static_cast<int>(art_.height) - inset - line_height);
     if (date_format_ == 2 || width > corner) {
@@ -199,7 +205,18 @@ class WatchSaver : public tessera::Saver {
       // font's corner. Use the free space outside the clock instead of its 6.
       const int outside = date_top_ ? static_cast<int>(art_.y) - line_height - ui::px(6)
                                    : static_cast<int>(art_.y + art_.height) + ui::px(6);
-      if (outside >= 0 && outside + line_height <= face_height_) y = outside;
+      const int opposite = date_top_ ? static_cast<int>(art_.y + art_.height) + ui::px(6)
+                                    : static_cast<int>(art_.y) - line_height - ui::px(6);
+      if (outside >= 0 && outside + line_height <= face_height_) {
+        y = outside;
+      } else if (opposite >= 0 && opposite + line_height <= face_height_) {
+        y = opposite;
+      } else if (width > corner) {
+        // Full-height clocks have no free row. Use spare horizontal margin,
+        // moving away from the numeral instead of truncating the date.
+        x += (date_right_ ? 1 : -1) * (width - corner + ui::px(2));
+        x = std::clamp(x, 0, std::max(0, face_width_ - width));
+      }
     }
     lv_obj_set_width(date_, std::max(1, width));
     lv_obj_set_pos(date_, x, y);
@@ -210,7 +227,7 @@ class WatchSaver : public tessera::Saver {
   float cx_ = 0, cy_ = 0;
   bool seconds_ = true, date_enabled_ = true, date_right_ = false, date_top_ = false, utc_ = false;
   int date_format_ = 0;
-  int date_size_ = 2, margin_ = 0, face_height_ = 0;
+  int date_size_ = 2, margin_ = 0, face_height_ = 0, face_width_ = 0;
   char date_text_[64]{};
   lv_point_precise_t points_0_[3]{}, points_1_[26]{}, points_2_[73]{}, points_3_[49]{}, points_4_[61]{};
   lv_point_precise_t hour_points_[2]{}, minute_points_[2]{}, second_points_[2]{};
