@@ -65,11 +65,11 @@ class WatchSaver : public tessera::Saver {
     lv_obj_set_size(face_, face_width_, face_height_);
     lv_obj_set_pos(face_, margin, margin);
     const char *digits[] = {"12", "3", "6", "9"};
-    const int inset = std::max(1, static_cast<int>(8 * art_.unit));
+    const int inset = std::max(1, static_cast<int>(2 * art_.unit));
     numeral_font_ = Font::DIGITS;
-    for (auto font : {Font::DIGITS, Font::VALUE, Font::HEADLINE, Font::TITLE}) {
+    for (auto font : {Font::WATCH_DIGITS, Font::DIGITS, Font::VALUE, Font::HEADLINE, Font::TITLE}) {
       numeral_font_ = font;
-      if (ui::line_height(font) <= art_.height * .42f && ui::text_width("12", font) <= art_.width * .48f) break;
+      if (ui::line_height(font) <= art_.height * .42f && ui::text_width("12", font) <= art_.width * .60f) break;
     }
     const int height = ui::line_height(numeral_font_);
     for (int i = 0; i < 4; ++i) {

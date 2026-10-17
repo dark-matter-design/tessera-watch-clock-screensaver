@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0 - 2026-10-18
+- Restores oversized numerals with the core's new large built-in Roboto digit step, rendered at native resolution.
+- Updates the interactive preview and firmware screenshots to match.
+- Requires the versioned Tessera fork update 0.4.90 (firmware 0.58.0), which fixes automatic firmware source selection.
+
 ## 0.3.0 - 2026-10-18
 - Replaces outlined vector numerals with Tessera's built-in digit font.
 - Adds smooth 30 FPS hands by default, with 1 FPS and 60 FPS choices. Frame rates are requests, subject to hardware performance.

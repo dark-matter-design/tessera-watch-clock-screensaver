@@ -30,10 +30,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: dark-matter-design/homeassistant_espscreen
-          ref: 4e70f8536c2f545b72424d9bc1deb08a84586efc
+          ref: c3dfe8356beeacfb8707bdf678d9818f76fbd706
           path: .research/tessera
-      - name: Apply live options support
-        run: git -C .research/tessera apply ../../compatibility/tessera-live-options.patch
       - run: pip install pyyaml
       - name: Check manifest and drawing rules
         run: python .research/tessera-plugins/tools/check.py .
@@ -47,6 +45,11 @@ jobs:
         run: python tools/prepare_bench.py
       - name: Preview real firmware
         run: python .research/tessera-plugins/tools/preview.py . --board ${{ matrix.board }} --strict
+      - name: Generate real ESP32 firmware from fork URLs
+        if: matrix.board == 'guition'
+        env:
+          TESSERA_CODEGEN_REF: c3dfe8356beeacfb8707bdf678d9818f76fbd706
+        run: .research/tessera-plugins/tools/.cache/preview-venv/bin/python tools/check_fork_build.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:

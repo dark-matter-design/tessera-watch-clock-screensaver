@@ -15,12 +15,17 @@ function render(timestamp) {
   const shape = state.shape || {}, compact = shape.look === 'compact';
   const look = (shape.dpi || (compact ? 143 : 170)) / (compact ? 143 : 170);
   const fonts = shape.fonts || {};
+  const watchSize = fonts.watch_digits || Math.floor(Math.min(W, H) * .42);
   const fontSizes = [fonts.setpoint || Math.round((compact ? 40 : 64) * look),
     fonts.watch_value || Math.round((compact ? 30 : 38) * look), fonts.headline || Math.round((compact ? 22 : 27) * look),
     fonts.label || Math.round((compact ? 16 : 18) * look), fonts.sublabel || Math.round((compact ? 14 : 16) * look)];
-  const lineHeight = size => Math.round(size * 1.172);
-  const font = size => { ctx.font = `${size}px WatchRoboto`; ctx.textBaseline = 'top'; };
-  const measure = (text, size) => { font(size); return ctx.measureText(text).width; };
+  ctx.font = `${watchSize}px WatchRoboto`;
+  const glyphMetrics = [...'12369'].map(digit => ctx.measureText(digit));
+  const watchAscent = Math.ceil(Math.max(...glyphMetrics.map(m => m.actualBoundingBoxAscent)));
+  const watchDescent = Math.ceil(Math.max(...glyphMetrics.map(m => m.actualBoundingBoxDescent)));
+  const lineHeight = size => size === watchSize ? watchAscent + watchDescent : Math.round(size * 1.172);
+  const font = (size, weight = 400) => { ctx.font = `${weight} ${size}px WatchRoboto`; ctx.textBaseline = 'top'; };
+  const measure = (text, size, weight = 400) => { font(size, weight); return ctx.measureText(text).width; };
   const margin = Math.round(2 * (shape.dpi || 170) / 25.4);
   const fw = W - 2 * margin, fh = H - 2 * margin;
   const side = Math.min(fw, fh) * clamp(Number(o.scale ?? 100), 50, 100) / 100;
@@ -39,15 +44,16 @@ function render(timestamp) {
   ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
   ctx.save(); ctx.translate(margin, margin);
   let size = fontSizes[0];
-  for (const candidate of fontSizes.slice(0, 4)) {
+  for (const candidate of [watchSize, ...fontSizes.slice(0, 4)]) {
     size = candidate;
-    if (lineHeight(size) <= h * .42 && measure('12', size) <= w * .48) break;
+    if (lineHeight(size) <= h * .42 && measure('12', size) <= w * .60) break;
   }
-  const inset = Math.max(1, Math.floor(8 * u)), height = lineHeight(size);
-  const label = (text, lx, ly, fs) => {
-    font(fs); ctx.fillStyle = ink;
+  const inset = Math.max(1, Math.floor(2 * u)), height = lineHeight(size);
+  const label = (text, lx, ly, fs, weight = 400) => {
+    font(fs, weight); ctx.fillStyle = ink;
     // Roboto's line box includes ascent above its cap height, as the LVGL labels do.
-    ctx.fillText(text, lx, ly + fs * .08);
+    if (fs === watchSize) { ctx.textBaseline = 'alphabetic'; ctx.fillText(text, lx, ly + watchAscent); }
+    else ctx.fillText(text, lx, ly + fs * .08);
   };
   ['12', '3', '6', '9'].forEach((text, i) => {
     const width = measure(text, size);
@@ -68,9 +74,10 @@ function render(timestamp) {
     const pad = Math.floor(14 * u), room = Math.max(1, w - 2 * pad);
     const corner = Math.max(1, (w - measure(top ? '12' : '6', size)) / 2 - pad - 4 * look);
     const choices = fontSizes.slice(1), first = o.date_size === 'small' ? 2 : o.date_size === 'medium' ? 1 : 0;
-    let fs = choices[3];
-    for (const candidate of choices.slice(first)) if (measure(text, candidate) <= corner) { fs = candidate; break; }
-    const width = Math.min(room, measure(text, fs)), lh = lineHeight(fs);
+    const weights = [500, 500, 700, 400];
+    let fs = choices[3], weight = 400;
+    for (let i = first; i < choices.length; ++i) if (measure(text, choices[i], weights[i]) <= corner) { fs = choices[i]; weight = weights[i]; break; }
+    const width = Math.min(room, measure(text, fs, weight)), lh = lineHeight(fs);
     let lx = x + (right ? w - pad - width : pad), ly = y + (top ? pad : h - pad - lh);
     if (o.date_format === 'numeric' || width > corner) {
       const outside = top ? y - lh - 6 * look : y + h + 6 * look;
@@ -79,7 +86,7 @@ function render(timestamp) {
       else if (opposite >= 0 && opposite + lh <= fh) ly = opposite;
       else if (width > corner) lx = clamp(lx + (right ? 1 : -1) * (width - corner + 2 * look), 0, fw - width);
     }
-    label(text, lx, ly, fs);
+    label(text, lx, ly, fs, weight);
   }
   const ray = (length, tail, degrees, width, colour) => {
     const a = degrees * Math.PI / 180;
