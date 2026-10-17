@@ -1,0 +1,111 @@
+id: watch_clock
+version: 0.1.0
+api: '0.14'
+icon: clock-outline
+maintainer: dark-matter-design
+license: Apache-2.0
+stage: beta
+topics:
+- time
+requires:
+  esphome: 2026.6.2
+boards: any
+flash_kb: 12
+savers:
+- id: watch
+  name: saver_name
+  icon: clock-outline
+  step: clock
+  memory: 4096
+  example: saver_example
+  options:
+  - id: numerals
+    kind: choice
+    label: numerals
+    default: green
+    choices:
+    - value: green
+      label: green
+    - value: white
+      label: white
+    - value: blue
+      label: blue
+    - value: purple
+      label: purple
+    - value: amber
+      label: amber
+  - id: layout
+    kind: choice
+    label: layout
+    default: original
+    choices:
+    - value: original
+      label: original
+    - value: adaptive
+      label: adaptive
+  - id: scale
+    kind: number
+    label: scale
+    min: 50
+    max: 100
+    step: 5
+    unit: '%'
+    default: 100
+  - id: alignment
+    kind: choice
+    label: alignment
+    default: centre
+    choices:
+    - value: centre
+      label: centre
+    - value: left
+      label: left
+    - value: right
+      label: right
+    - value: top
+      label: top
+    - value: bottom
+      label: bottom
+  - id: seconds
+    kind: toggle
+    label: seconds
+    hint: seconds_hint
+    default: true
+  - id: date
+    kind: toggle
+    label: date
+    default: true
+  - id: date_position
+    kind: choice
+    label: date_position
+    default: bottom_left
+    choices:
+    - value: bottom_left
+      label: bottom_left
+    - value: bottom_right
+      label: bottom_right
+    - value: top_left
+      label: top_left
+    - value: top_right
+      label: top_right
+  - id: date_format
+    kind: choice
+    label: date_format
+    default: weekday
+    choices:
+    - value: weekday
+      label: weekday
+    - value: month
+      label: month
+    - value: numeric
+      label: numeric
+  - id: timezone
+    kind: choice
+    label: timezone
+    hint: timezone_hint
+    default: screen
+    choices:
+    - value: screen
+      label: screen
+    - value: utc
+      label: utc

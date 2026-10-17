@@ -1,0 +1,28 @@
+savers:
+- saver: watch
+  name: Original proportions
+  data: {}
+- saver: watch
+  name: Adaptive spacing
+  options:
+    layout: adaptive
+    numerals: white
+    date_position: top_right
+  data: {}
+- saver: watch
+  name: Quiet clock
+  options:
+    seconds: false
+    date: false
+    scale: 75
+    alignment: right
+    numerals: blue
+  data: {}
+- saver: watch
+  name: UTC numeric date
+  options:
+    timezone: utc
+    date_format: numeric
+    date_position: bottom_right
+    numerals: amber
+  data: {}

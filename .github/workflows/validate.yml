@@ -1,0 +1,44 @@
+name: Validate Watch Clock
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TESSERA_REF: main
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Get official plugin tools
+        uses: actions/checkout@v4
+        with:
+          repository: MaxGramser/tessera-plugins
+          ref: 85112ffc7d9146d33fe6ee22c6f3faec710ed80a
+          path: .research/tessera-plugins
+      - run: pip install pyyaml
+      - name: Check manifest and drawing rules
+        run: python .research/tessera-plugins/tools/check.py .
+      - name: Test native geometry
+        run: python tools/test.py
+      - name: Install preview dependencies
+        run: sudo apt-get update && sudo apt-get install -y libsdl2-dev
+      - name: Preview real firmware
+        run: python .research/tessera-plugins/tools/preview.py . --strict
+      - name: Make store picture
+        run: python .research/tessera-plugins/tools/store_image.py . --from .preview
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: watch-clock-preview
+          path: |
+            .preview/
+            store.png
+          include-hidden-files: true
+          if-no-files-found: ignore

@@ -1,0 +1,2 @@
+# Tessera configures the external component and owns standby and wake.
+watch_clock:
