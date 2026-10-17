@@ -23,7 +23,7 @@ int main() {
   l=layout(100,100,std::numeric_limits<float>::quiet_NaN(),false,0); near(l.width,100);
   // Every source stroke stays inside the art at all supported aspect ratios,
   // scales, layouts and alignments, with room for its rounded cap.
-  const int sizes[][2]={{320,240},{480,480},{480,800},{1280,800},{1920,1080},{240,320}};
+  const int sizes[][2]={{320,240},{480,480},{480,800},{1024,600},{600,1024},{1280,800},{1920,1080},{240,320}};
   for (auto &size:sizes) for (int adaptive=0;adaptive<2;++adaptive)
     for (int scale=50;scale<=100;scale+=5) for (int align=0;align<5;++align) {
       l=layout(size[0],size[1],scale,adaptive,align);

@@ -1,5 +1,6 @@
 .research/
 .preview/
+.preview-guition7/
 __pycache__/
 *.pyc
 .venv/

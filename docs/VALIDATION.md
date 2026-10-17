@@ -8,6 +8,7 @@ Automated checks:
 - Native C++ geometry tests against the original renderer: cardinal directions, fractional hour/minute angles, square/adaptive sizing, 1.65 aspect cap, scale clamping, alignment and stroke bounds across supported display sizes.
 - Generated numeral consistency check, including all cubic endpoints.
 - GitHub Actions: official strict preview bench using actual Tessera firmware for CYD, square Guition, standing Waveshare and large Guition displays, in both screen themes. Results and images are uploaded even when the bench fails.
+- Additional strict previews for both Guition 7-inch catalog boards, JC1060P470 and JC1060P470 V2 (1024 × 600). The Guition 4-inch square and 10.1-inch displays are covered by the default bench. These are desktop firmware builds, not hardware acceptance tests.
 
 Physical device checklist (not performed):
 

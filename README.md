@@ -52,6 +52,8 @@ python ../tessera-plugins/tools/store_image.py . --from .preview
 
 The official preview bench needs Linux/macOS or WSL with a C++ compiler and SDL2. GitHub Actions runs the manifest checker, geometry tests and real firmware preview on four screen sizes. Its downloadable `watch-clock-preview` artifact contains rendered screens and findings. See [validation notes](docs/VALIDATION.md) for test coverage and hardware limitations.
 
+The additional Guition checks cover the 7-inch JC1060P470 and V2 (1024 × 600), alongside the square 4-inch ESP32-S3-4848S040 (480 × 480) and 10.1-inch JC8012P4A1 (1280 × 800). Both 7-inch boards support standby in Tessera's catalog; their hardware support is marked experimental upstream.
+
 The plugin is installed from source; no Kiosk Satellite ZIP, DEX or APK is used. Without a GitHub release, Tessera follows the default branch as a test installation. Releases are intentionally deferred until a real screen has been tested.
 
 ## Credits

@@ -8,7 +8,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       TESSERA_REF: main
     steps:
@@ -33,12 +33,15 @@ jobs:
         run: python .research/tessera-plugins/tools/preview.py . --strict
       - name: Make store picture
         run: python .research/tessera-plugins/tools/store_image.py . --from .preview
+      - name: Preview Guition 7-inch models
+        run: python .research/tessera-plugins/tools/preview.py . --board jc1060p470 --board jc1060p470v2 --strict --out .preview-guition7
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: watch-clock-preview
           path: |
             .preview/
+            .preview-guition7/
             store.png
           include-hidden-files: true
           if-no-files-found: ignore
