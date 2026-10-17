@@ -44,6 +44,8 @@ jobs:
   store:
     needs: preview
     runs-on: ubuntu-latest
+    env:
+      TESSERA_TREE: ${{ github.workspace }}/.research/tessera
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -55,6 +57,11 @@ jobs:
           ref: 85112ffc7d9146d33fe6ee22c6f3faec710ed80a
           path: .research/tessera-plugins
       - run: pip install pyyaml pillow
+      - uses: actions/checkout@v4
+        with:
+          repository: MaxGramser/homeassistant_espscreen
+          path: .research/tessera
+          sparse-checkout: fonts
       - uses: actions/download-artifact@v4
         with:
           pattern: watch-clock-*
