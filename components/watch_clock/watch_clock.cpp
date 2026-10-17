@@ -103,12 +103,19 @@ class WatchSaver : public tessera::Saver {
   template<size_t N>
   void numeral(lv_obj_t *parent, const geometry::Point (&source)[N], lv_point_precise_t (&points)[N],
                float x, float y, theme::Role role) {
+    int left = 100000, top = 100000;
     for (size_t i = 0; i < N; ++i) {
       points[i].x = std::lround(art_.x + (source[i].x + x) * art_.unit);
       points[i].y = std::lround(art_.y + (source[i].y + y) * art_.unit);
+      left = std::min(left, static_cast<int>(points[i].x));
+      top = std::min(top, static_cast<int>(points[i].y));
+    }
+    for (auto &p : points) {
+      p.x -= left; p.y -= top;
     }
     auto *part = line(parent, 6.4f * art_.unit, role);
     lv_line_set_points(part, points, N);
+    lv_obj_set_pos(part, left, top);
   }
   void update_hand(lv_obj_t *part, lv_point_precise_t (&points)[2], float length, float tail, float angle) {
     const auto end = geometry::hand(cx_, cy_, length * art_.unit, angle);
@@ -116,11 +123,18 @@ class WatchSaver : public tessera::Saver {
     lv_point_precise_t next[2] = {};
     next[0].x = std::lround(start.x); next[0].y = std::lround(start.y);
     next[1].x = std::lround(end.x); next[1].y = std::lround(end.y);
-    if (points[0].x == next[0].x && points[0].y == next[0].y &&
+    const int left = std::min(next[0].x, next[1].x);
+    const int top = std::min(next[0].y, next[1].y);
+    for (auto &p : next) { p.x -= left; p.y -= top; }
+    if (lv_obj_get_x(part) == left && lv_obj_get_y(part) == top &&
+        points[0].x == next[0].x && points[0].y == next[0].y &&
         points[1].x == next[1].x && points[1].y == next[1].y) return;
+    // Keep the dirty region to the hand's own rectangle, not a rectangle
+    // stretching all the way to the top-left corner of the screen.
     lv_obj_invalidate(part);
     std::copy(next, next + 2, points);
     lv_line_set_points(part, points, 2);
+    lv_obj_set_pos(part, left, top);
   }
   static void visible(lv_obj_t *part, bool value) {
     if (value && lv_obj_has_flag(part, LV_OBJ_FLAG_HIDDEN)) lv_obj_remove_flag(part, LV_OBJ_FLAG_HIDDEN);
@@ -141,6 +155,9 @@ class WatchSaver : public tessera::Saver {
       if (date_format_ == 1) std::snprintf(text, sizeof(text), "%d %s", now.day, plugin_->text(key));
       else std::snprintf(text, sizeof(text), "%s %d", plugin_->text(key), now.day);
     }
+    visible(date_, true);
+    if (!std::strcmp(text, date_text_)) return;
+    std::snprintf(date_text_, sizeof(date_text_), "%s", text);
     ui::set_text(date_, text);
     const int inset = static_cast<int>(14 * art_.unit);
     const int room = std::max(1, static_cast<int>(art_.width) - 2 * inset);
@@ -156,6 +173,7 @@ class WatchSaver : public tessera::Saver {
   float cx_ = 0, cy_ = 0;
   bool seconds_ = true, date_enabled_ = true, date_right_ = false, date_top_ = false, utc_ = false;
   int date_format_ = 0;
+  char date_text_[64]{};
   lv_point_precise_t points_0_[3]{}, points_1_[26]{}, points_2_[73]{}, points_3_[49]{}, points_4_[61]{};
   lv_point_precise_t hour_points_[2]{}, minute_points_[2]{}, second_points_[2]{};
   lv_obj_t *hour_{}, *minute_{}, *second_{}, *ring_{}, *pivot_{}, *date_{};
