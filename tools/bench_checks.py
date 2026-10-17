@@ -38,9 +38,9 @@ def install(bench, saver_word):
             await change({**base, 'motion': motion})
             await self.call('render_time', epoch=self.now + 1)
             await asyncio.sleep(.06)
-            first = await self.render('_frame-first', keep=False)
+            first = await self.snapshot(self.out / '_frame-first.ppm')
             await asyncio.sleep(.18)
-            later = await self.render('_frame-later', keep=False)
+            later = await self.snapshot(self.out / '_frame-later.ppm')
             assert first.tobytes() != later.tobytes(), f'{motion} hands did not move between second ticks'
             await self.call('render_time', epoch=self.now)
 
