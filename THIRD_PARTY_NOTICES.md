@@ -13,3 +13,7 @@ Copyright 2026 dark-matter-design. Port modifications copyright 2026 dark-matter
 The ESPHome component scaffold, plugin package pattern and assistant instructions were generated from [MaxGramser/tessera-plugins](https://github.com/MaxGramser/tessera-plugins), revision `85112ffc7d9146d33fe6ee22c6f3faec710ed80a`.
 
 The MIT license and its copyright notice are reproduced in `licenses/Tessera-MIT.txt`.
+
+## Tessera editor compatibility patch
+
+`compatibility/tessera-saver-preview.patch` modifies source from MaxGramser/homeassistant_espscreen, dev revision `b18ee2f`. This patch is AGPL-3.0-or-later, separately from the Apache-2.0 firmware plugin. The upstream license is reproduced in `licenses/Tessera-AGPL-3.0.txt`.

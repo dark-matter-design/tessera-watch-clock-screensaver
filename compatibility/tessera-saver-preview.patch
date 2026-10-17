@@ -1,0 +1,234 @@
+diff --git a/docs/PLUGINS.md b/docs/PLUGINS.md
+index 5812da8..21473f9 100644
+--- a/docs/PLUGINS.md
++++ b/docs/PLUGINS.md
+@@ -366,6 +366,13 @@ picture store of a 4-inch Guition's size, so its renders show every picture of a
+ 
+ ## A screensaver (0.14)
+ 
++A clock face may include a static firmware screenshot at `previews/<saver-id>.png`, for example
++`previews/watch.png`. The Clock drawer asks for it through the plugin image route with `saver=<saver-id>`, at the
++plugin's pinned commit. The app accepts only a declared saver and a PNG within the store picture limits. A missing
++or invalid picture keeps the icon and example text. No manifest field or firmware API change is needed. The picture
++is an example; it does not update when the person changes the saver's options. The Plugins listing still uses
++`store.png`, independently of this screenshot.
++
+ The screensaver is a list of steps in the order the person put them (docs/SCREENSAVER.md): the music that plays, the
+ photos of a folder, a camera, the clock. ESP Screen Manager picks the first that has something to show; the screen
+ shows it over the whole glass while Auto standby dims it. A plugin adds to that list in two ways, and never beside it:
+diff --git a/screen_manager/CHANGELOG.md b/screen_manager/CHANGELOG.md
+index 98a6216..c53d1fb 100644
+--- a/screen_manager/CHANGELOG.md
++++ b/screen_manager/CHANGELOG.md
+@@ -1,5 +1,9 @@
+ ## Unreleased
+ 
++- **A plugin clock can show its real face in the editor.** Plugins may include a firmware screenshot at
++  `previews/<saver-id>.png`. The Clock drawer shows it instead of the generic icon and example text, and keeps the
++  old placeholder when there is no screenshot. This is a static example, not a live rendering of its options.
++
+ - **A new screen swipes out of the box.** A screen set up with New screen now has Swipe between pages on from the
+   start, so it swipes through its pages, opens its settings from the top edge and opens the Dock from the bottom edge
+   without turning anything on first. Screens you already have keep the setting they have through the update. Turn it
+diff --git a/screen_manager/app/plugins.py b/screen_manager/app/plugins.py
+index cb2f223..cb1c19d 100644
+--- a/screen_manager/app/plugins.py
++++ b/screen_manager/app/plugins.py
+@@ -846,28 +846,34 @@ class Plugins:
+                 return None
+         return f'api/plugins/{entry.id}/image?v={version or 0}'
+ 
+-    async def store_image(self, plugin_id):
++    async def store_image(self, plugin_id, saver_id=None):
+         """The PNG of a listed plugin's picture for the Plugins page, or None: from its folder, or fetched from GitHub at
+-        the plugin's commit and kept under data/images (one per plugin), checked to be a PNG of a size the page takes."""
++        the plugin's commit and kept under data/images (one per plugin), checked to be a PNG of a size the page takes.
++        A declared saver may ask for previews/<id>.png instead; its cache is separate from the listing picture."""
+         entry = self.listed().get(plugin_id)
+-        if entry is None or not entry.image:
++        if entry is None or (saver_id is None and not entry.image):
+             return None
++        if saver_id is not None and not entry.saver(saver_id):
++            return None
++        picture = f'previews/{saver_id}.png' if saver_id is not None else STORE_IMAGE
++        cache_id = f'{entry.id}-{saver_id}' if saver_id is not None else entry.id
++        cache_folder = 'saver-images' if saver_id is not None else 'images'
+         if entry.folder is not None:
+             try:
+-                body = (Path(entry.folder) / STORE_IMAGE).read_bytes()
++                body = (Path(entry.folder) / picture).read_bytes()
+             except OSError:
+                 return None
+             return body if store_image_ok(body) else None
+         found = GITHUB_LINK.match(entry.repo or '')
+         if not found or not re.fullmatch(r'[0-9a-f]{40}', entry.ref or ''):
+             return None
+-        kept = self.data / 'images' / f'{entry.id}-{entry.ref}.png'
++        kept = self.data / cache_folder / f'{cache_id}-{entry.ref}.png'
+         try:
+             return kept.read_bytes()
+         except OSError:
+             pass
+         base = '' if entry.path in ('', '.') else entry.path.strip('/') + '/'
+-        url = GITHUB_RAW.format(owner=found.group(1), repo=found.group(2), ref=entry.ref, path=base + STORE_IMAGE)
++        url = GITHUB_RAW.format(owner=found.group(1), repo=found.group(2), ref=entry.ref, path=base + picture)
+         import aiohttp
+         try:
+             if self.http is None or self.http.closed:
+@@ -881,11 +887,11 @@ class Plugins:
+             LOG.info('Plugin %s: picture not read (%s)', entry.id, error)
+             return None
+         if not store_image_ok(body):
+-            LOG.info('Plugin %s: %s is not a PNG the Plugins page takes', entry.id, STORE_IMAGE)
++            LOG.info('Plugin %s: %s is not a PNG the editor takes', entry.id, picture)
+             return None
+         try:
+             kept.parent.mkdir(parents=True, exist_ok=True)
+-            for old in kept.parent.glob(f'{entry.id}-*.png'):
++            for old in kept.parent.glob(f'{cache_id}-*.png'):
+                 old.unlink(missing_ok=True)
+             kept.write_bytes(body)
+         except OSError as error:
+diff --git a/screen_manager/app/server.py b/screen_manager/app/server.py
+index f84ee83..4e9b8be 100644
+--- a/screen_manager/app/server.py
++++ b/screen_manager/app/server.py
+@@ -5117,7 +5117,7 @@ def create_app(manager, development=False):
+         async def plugins_image(request):
+             # A plugin's picture for the Plugins page (store.png), served by the app: the editor shows no picture of
+             # another address (its img-src is 'self').
+-            body = await manager.plugins.store_image(request.match_info['plugin'])
++            body = await manager.plugins.store_image(request.match_info['plugin'], request.query.get('saver'))
+             if body is None:
+                 raise web.HTTPNotFound()
+             return web.Response(body=body, content_type='image/png')
+diff --git a/tests/test_plugin_catalog.py b/tests/test_plugin_catalog.py
+index 48c19d5..6164566 100644
+--- a/tests/test_plugin_catalog.py
++++ b/tests/test_plugin_catalog.py
+@@ -300,6 +300,36 @@ class StoreImage(unittest.IsolatedAsyncioTestCase):
+ 
+ 
+ 
++class SaverPreview(unittest.IsolatedAsyncioTestCase):
++    service = Catalogue.service
++
++    def catalogue(self):
++        return self.service(item('clock', api='0.14', savers=[
++            {'id': 'dial', 'name': 'name', 'step': 'clock', 'memory': 400}]))
++
++    async def test_only_a_declared_savers_png_is_fetched_and_cached(self):
++        service = self.catalogue()
++        url = f'https://raw.githubusercontent.com/MaxGramser/tessera-plugins/{"a" * 40}/plugins/clock/previews/dial.png'
++        service.http = FakeHttp({url: png(480, 480)})
++        self.assertEqual(await service.store_image('clock', 'dial'), png(480, 480))
++        self.assertEqual(await service.store_image('clock', 'dial'), png(480, 480))
++        self.assertIsNone(await service.store_image('clock', '../store'))
++        self.assertIsNone(await service.store_image('clock', 'missing'))
++        self.assertEqual(service.http.asked, [url])
++
++    async def test_a_missing_or_invalid_screenshot_is_not_served(self):
++        service = self.catalogue()
++        folder = service.data.parent / 'preview-clock'
++        (folder / 'previews').mkdir(parents=True)
++        service.index['clock'].folder = folder
++        self.assertIsNone(await service.store_image('clock', 'dial'))
++        image = folder / 'previews/dial.png'
++        image.write_bytes(b'<html>not an image</html>')
++        self.assertIsNone(await service.store_image('clock', 'dial'))
++        image.write_bytes(png(480, 480))
++        self.assertEqual(await service.store_image('clock', 'dial'), png(480, 480))
++
++
+ class IndexResponse(FakeResponse):
+     headers = {}
+ 
+diff --git a/web/src/components/SaverGlass.vue b/web/src/components/SaverGlass.vue
+index c3cb2e2..fcb3389 100644
+--- a/web/src/components/SaverGlass.vue
++++ b/web/src/components/SaverGlass.vue
+@@ -3,7 +3,7 @@
+ // and the bottom line with the temperature and the entities, white on black as the screen draws it. A line wider than
+ // the glass loses its last entities until it fits, as on the screen, so the temperature always stays.
+ // A face of the module (Glass, Classic, Bauhaus) shows as that face instead (SaverFace.vue), and a plugin's face as its
+-// icon and the words of its example: the editor cannot run its drawing.
++// optional firmware screenshot, or its icon and example when no screenshot exists.
+ import { useResizeObserver } from "@vueuse/core";
+ import { computed, nextTick, onMounted, ref, watch } from "vue";
+ import { t } from "../i18n";
+@@ -22,6 +22,13 @@ const region = useRegionStore();
+ const ui = useUiStore();
+ const plugins = usePluginsStore();
+ const pluginFace = computed(() => (screensaver.clockPluginFace ? plugins.saverOf(screensaver.clockPluginFace) : undefined));
++const pluginPreview = computed(() => {
++  const known = pluginFace.value;
++  return known?.plugin.image ? `${known.plugin.image}&saver=${encodeURIComponent(known.saver.id)}` : null;
++});
++const previewFailed = ref(false);
++watch(pluginPreview, () => { previewFailed.value = false; });
++const showPreview = computed(() => Boolean(pluginPreview.value && !previewFailed.value));
+ const at = computed(() => new Date(ui.now));
+ const say = (key: string) => t(key, {}, { locale: region.screenLanguage });
+ const words = computed(() => ({
+@@ -51,9 +58,12 @@ useResizeObserver(line, () => measure());
+ </script>
+ 
+ <template>
+-  <div v-if="screensaver.clockPluginFace" class="saver-glass plugin" aria-hidden="true" :style="{ aspectRatio: screensaver.glassRatio, height: `${height}px`, '--glass-h': `${height}px` }">
+-    <span class="mdi saver-glass-icon">{{ glyph(pluginFace?.saver.icon || pluginFace?.plugin.icon || "F0A66") }}</span>
+-    <span class="saver-glass-date">{{ pluginFace ? text(pluginFace.saver.example || pluginFace.saver.name) : screensaver.stepLabel(screensaver.clockPluginFace) }}</span>
++  <div v-if="screensaver.clockPluginFace" class="saver-glass plugin" :class="{ pictured: showPreview }" aria-hidden="true" :style="{ aspectRatio: screensaver.glassRatio, height: `${height}px`, '--glass-h': `${height}px` }">
++    <img v-if="showPreview" class="saver-glass-preview" :src="pluginPreview!" alt="" @error="previewFailed = true" />
++    <template v-else>
++      <span class="mdi saver-glass-icon">{{ glyph(pluginFace?.saver.icon || pluginFace?.plugin.icon || "F0A66") }}</span>
++      <span class="saver-glass-date">{{ pluginFace ? text(pluginFace.saver.example || pluginFace.saver.name) : screensaver.stepLabel(screensaver.clockPluginFace) }}</span>
++    </template>
+   </div>
+   <div v-else-if="screensaver.face !== 'digital'" class="saver-glass face" aria-hidden="true" :style="{ aspectRatio: screensaver.glassRatio, height: `${height}px`, '--glass-h': `${height}px` }">
+     <SaverFace :kind="screensaver.face" :dark="screensaver.faceDark" :numerals="screensaver.saver?.numerals ?? 4" :seconds="screensaver.saver?.seconds ?? true"
+@@ -71,6 +81,8 @@ useResizeObserver(line, () => measure());
+ 
+ <style scoped>
+ .saver-glass.face { padding: 0; overflow: hidden; }
++.saver-glass.plugin.pictured { padding: 0; overflow: hidden; }
++.saver-glass-preview { display: block; width: 100%; height: 100%; object-fit: contain; }
+ .saver-glass { display: grid; justify-items: center; align-content: center; gap: 2px; width: auto; max-width: 100%; justify-self: center; position: relative;
+   border-radius: calc(var(--glass-h) * 0.07); background: #000; color: #fff; padding: 0 10px; }
+ .saver-glass-time { font-size: calc(var(--glass-h) * 0.25); font-weight: 300; line-height: 1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+diff --git a/web/tests/screensaver-plugins.spec.ts b/web/tests/screensaver-plugins.spec.ts
+index 347e267..7bdacbf 100644
+--- a/web/tests/screensaver-plugins.spec.ts
++++ b/web/tests/screensaver-plugins.spec.ts
+@@ -5,6 +5,7 @@ import { flushPromises, mount } from "@vue/test-utils";
+ import { describe, expect, it } from "vitest";
+ import ScreensaverCard from "../src/components/ScreensaverCard.vue";
+ import SaverClock from "../src/components/SaverClock.vue";
++import SaverGlass from "../src/components/SaverGlass.vue";
+ import SaverInspector from "../src/components/SaverInspector.vue";
+ import { i18n } from "../src/i18n";
+ import type { Plugin } from "../src/model/plugins";
+@@ -19,6 +20,24 @@ import { fakeApi } from "./helpers/fake-api";
+ const t = (key: string, named: Record<string, unknown> = {}) => i18n.global.t(key, named);
+ const T = (key: string, named: Record<string, unknown> = {}) => t(`editor.screen_settings.screensaver.${key}`, named);
+ 
++describe("a plugin clock screenshot", () => {
++  it("loads the declared face through the app and falls back when the image is missing", async () => {
++    const { saver, plugins } = open();
++    plugins.index = [{ ...radar, image: "api/plugins/radar/image?v=one" }];
++    saver.setFace("clock", "plugin:radar.big");
++    const glass = mount(SaverGlass, { props: { height: 150 } });
++    await flushPromises();
++    expect(glass.find("img").attributes("src")).toBe("api/plugins/radar/image?v=one&saver=big");
++    expect(glass.find(".saver-glass-icon").exists()).toBe(false);
++    await glass.find("img").trigger("error");
++    expect(glass.find("img").exists()).toBe(false);
++    expect(glass.find(".saver-glass-icon").exists()).toBe(true);
++    plugins.index = [{ ...radar, image: "api/plugins/radar/image?v=two" }];
++    await flushPromises();
++    expect(glass.find("img").attributes("src")).toContain("v=two");
++  });
++});
++
+ // A plugin with a step of its own of an entity (a radar of a weather entity), one without, and a face of each core step.
+ const radar: Plugin = {
+   id: "radar", name: { en: "Rain radar" }, summary: { en: "" }, icon: "F0597", maintainer: "", tessera: true, version: "1.0.0", repo: "", license: "MIT",
