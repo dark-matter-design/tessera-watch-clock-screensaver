@@ -194,7 +194,7 @@ class WatchSaver : public tessera::Saver {
     const int x = static_cast<int>(art_.x) + (date_right_ ? static_cast<int>(art_.width) - inset - width : inset);
     const int line_height = ui::line_height(font);
     int y = static_cast<int>(art_.y) + (date_top_ ? inset : static_cast<int>(art_.height) - inset - line_height);
-    if (width > corner) {
+    if (date_format_ == 2 || width > corner) {
       // At a small clock scale a long numeric date can outgrow every built-in
       // font's corner. Use the free space outside the clock instead of its 6.
       const int outside = date_top_ ? static_cast<int>(art_.y) - line_height - ui::px(6)
