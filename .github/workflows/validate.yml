@@ -14,7 +14,9 @@ jobs:
       matrix:
         board: [cyd, guition, jc1060p470, jc1060p470v2, jc8012p4a1]
     env:
-      TESSERA_REF: main
+      TESSERA_TREE: ${{ github.workspace }}/.research/tessera
+      TESSERA_MANIFEST: ${{ github.workspace }}/.research/tessera/screen_manager/app/plugin_manifest.py
+      TESSERA_BOARDS: ${{ github.workspace }}/.research/tessera/screen_manager/app/boards.json
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -25,13 +27,24 @@ jobs:
           repository: MaxGramser/tessera-plugins
           ref: 85112ffc7d9146d33fe6ee22c6f3faec710ed80a
           path: .research/tessera-plugins
+      - uses: actions/checkout@v4
+        with:
+          repository: dark-matter-design/homeassistant_espscreen
+          ref: 4e70f853
+          path: .research/tessera
+      - name: Apply live options support
+        run: git -C .research/tessera apply ../../compatibility/tessera-live-options.patch
       - run: pip install pyyaml
       - name: Check manifest and drawing rules
         run: python .research/tessera-plugins/tools/check.py .
       - name: Test native geometry
         run: python tools/test.py
+      - name: Test host timer lifecycle
+        run: python .research/tessera/tests/test_saver_animation.py
       - name: Install preview dependencies
         run: sudo apt-get update && sudo apt-get install -y libsdl2-dev
+      - name: Enable live settings and sweep checks
+        run: python tools/prepare_bench.py
       - name: Preview real firmware
         run: python .research/tessera-plugins/tools/preview.py . --board ${{ matrix.board }} --strict
       - uses: actions/upload-artifact@v4

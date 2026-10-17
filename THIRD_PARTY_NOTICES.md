@@ -2,9 +2,9 @@
 
 ## Kiosk Satellite Watch Clock
 
-The geometric numeral control points in `tools/generate_numerals.py`, the generated `components/watch_clock/numerals.h`, hand proportions and layout mathematics are adapted from [dark-matter-design/kiosk-satellite-watch-clock-screensaver](https://github.com/dark-matter-design/kiosk-satellite-watch-clock-screensaver), revision `f81debb5edf5405116f6b2cf51a2245e0ab77c9a`.
+The hand proportions and layout mathematics are adapted from [dark-matter-design/kiosk-satellite-watch-clock-screensaver](https://github.com/dark-matter-design/kiosk-satellite-watch-clock-screensaver), revision `f81debb5edf5405116f6b2cf51a2245e0ab77c9a`.
 
-Licensed under Apache License 2.0, reproduced in LICENSE. Modified for native LVGL rendering, Tessera's theme, screen clock and once-per-second lifecycle. No Java SDK or Android assets are included.
+Licensed under Apache License 2.0, reproduced in LICENSE. Modified for native LVGL rendering, Tessera's theme, screen clock and screensaver lifecycle and animation callbacks. No Java SDK or Android assets are included.
 
 Copyright 2026 dark-matter-design. Port modifications copyright 2026 dark-matter-design.
 

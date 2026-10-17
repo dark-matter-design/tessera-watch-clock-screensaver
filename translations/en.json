@@ -25,9 +25,9 @@
   },
   "app": {
     "name": "Watch Clock",
-    "summary": "A watch face with geometric numerals, a readable coloured date and optional coloured background.",
+    "summary": "A watch face with native digits, smooth hands, a coloured date and live settings.",
     "saver_name": "Watch Clock",
-    "saver_example": "A geometric watch face with a coloured date and optional coloured background.",
+    "saver_example": "A watch face with native digits and smooth sweeping hands.",
     "numerals": "Face colour",
     "green": "Green",
     "white": "White",
@@ -45,7 +45,7 @@
     "top": "Top",
     "bottom": "Bottom",
     "seconds": "Seconds hand",
-    "seconds_hint": "Updates once per second. Tessera does not support a smooth sweeping hand.",
+    "seconds_hint": "Show or hide the seconds hand. Animation speed applies to every hand.",
     "date": "Show date",
     "date_position": "Date position",
     "bottom_left": "Bottom left",
@@ -66,6 +66,11 @@
     "date_size_hint": "Automatically fits longer dates and smaller clock scales.",
     "small": "Small",
     "medium": "Medium",
-    "large": "Large"
+    "large": "Large",
+    "motion": "Hand animation",
+    "motion_hint": "Requested frame rate. Actual smoothness depends on your screen and rendering load.",
+    "tick": "Tick (1 FPS)",
+    "smooth": "Smooth (30 FPS)",
+    "fluid": "Fluid (60 FPS)"
   }
 }

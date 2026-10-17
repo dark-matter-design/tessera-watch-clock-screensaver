@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 - 2026-10-18
+- Replaces outlined vector numerals with Tessera's built-in digit font.
+- Adds smooth 30 FPS hands by default, with 1 FPS and 60 FPS choices. Frame rates are requests, subject to hardware performance.
+- Applies all face options while the saver is visible, with matching live-options support in the Tessera fork.
+- Requires the API 0.15 animation firmware plus the live-options patch in compatibility/. Update the firmware once to enable these features.
+
 ## 0.2.0 - 2026-10-18
 - The date is larger by default and follows the face colour. Adds Small, Medium and Large date sizes with automatic fitting.
 - Adds Coloured background: the chosen colour fills the glass, with black numerals and date and contrasting hands.

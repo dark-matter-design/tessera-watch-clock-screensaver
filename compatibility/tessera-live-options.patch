@@ -1,0 +1,123 @@
+diff --git a/components/smart_display/plugin_api.h b/components/smart_display/plugin_api.h
+index bfccbfd5..cb39dcd6 100644
+--- a/components/smart_display/plugin_api.h
++++ b/components/smart_display/plugin_api.h
+@@ -295,10 +295,13 @@ class Saver : public InPsram {
+   // entity, as a tile's on_state. Called after show(), and again whenever it changed (a wish of the finger shows here
+   // at once, wish()). Fields only come to it; none is renamed or taken away within major 0.
+   virtual void on_state(JsonObjectConst data) {}
++  // Updated editor options (0.15), only when they change after show(). Paint the existing parts in place.
++  // Valid during this call only. The host rechecks frame_interval_ms() afterwards.
++  virtual void on_options(JsonObjectConst options) {}
+   // Once a second while it is on the glass, with the screen's clock (seconds since 1970, 0 until it is set). Paint what
+   // changed, never the whole saver: the glass draws only the boxes that changed.
+   virtual void on_tick(uint32_t epoch) {}
+-  // Optional animation (0.15). Read once after show(), on_state() and the first on_tick(): 0 (the default) means no
++  // Optional animation (0.15). Read after initial callbacks and after options change: 0 (the default) means no
+   // animation timer; 33 requests about 30 frames/s, 16 about 60. The host clamps nonzero intervals to at least 16 ms.
+   virtual uint32_t frame_interval_ms() const { return 0; }
+   // Monotonic milliseconds, NOT epoch seconds. Use elapsed time, not a frame count: drawing can delay a frame.
+diff --git a/components/smart_display/plugin_host.cpp b/components/smart_display/plugin_host.cpp
+index 216f8e51..f4348ab2 100644
+--- a/components/smart_display/plugin_host.cpp
++++ b/components/smart_display/plugin_host.cpp
+@@ -1107,6 +1107,7 @@ struct OpenSaver : tessera::InPsram {
+   std::string art_key;           // the picture its places want, "" for none
+   roomy::Text data;              // the app's word for it ({"o", "x"}), as it came
+   std::string mark, entity;      // the step's picture's mark (its `mark`), and the entity it belongs to (pictures)
++  roomy::Text options;           // last delivered options, compared independently of the step state
+   size_t state = 0;              // the data it was last given (a hash)
+   int minute = -1;
+ };
+@@ -1136,7 +1137,13 @@ static void saver_animate() {
+   if (!open) return;
+   uint32_t interval = 0;
+   saver_call([&](tessera::Saver &s) { interval = s.frame_interval_ms(); });
+-  if (saver_open != open || !interval) return;
++  if (saver_open != open) return;
++  if (!interval) {
++    if (open->frame_timer) { lv_timer_delete(open->frame_timer); open->frame_timer = nullptr; }
++    return;
++  }
++  interval = std::max<uint32_t>(16, interval);
++  if (open->frame_timer) { lv_timer_set_period(open->frame_timer, interval); return; }
+   open->frame_timer = lv_timer_create([](lv_timer_t *) {
+     saver_call([](tessera::Saver &s) { s.on_frame(esphome::millis()); });
+   }, std::max<uint32_t>(16, interval), nullptr);
+@@ -1168,6 +1175,16 @@ static void saver_feed(bool force) {
+   if (!open) return;
+   JsonDocument doc(&json_memory);
+   if (open->data.empty() || deserializeJson(doc, open->data.data(), open->data.size())) doc.to<JsonObject>();
++  roomy::Text options;
++  serializeJson(doc["o"].as<JsonObjectConst>(), options);
++  if (force) open->options = options;  // show() already received these
++  else if (options != open->options) {
++    open->options = options;
++    saver_call([&](tessera::Saver &s) { s.on_options(doc["o"].as<JsonObjectConst>()); });
++    if (saver_open != open) return;
++    saver_animate();
++    if (saver_open != open) return;
++  }
+   JsonObject x = doc["x"].is<JsonObject>() ? doc["x"].as<JsonObject>() : doc["x"].to<JsonObject>();
+   if (open->step == tessera::SaverStep::MEDIA && rt::saver_now.kind == "media") {
+     x["state"] = rt::saver_now.state;
+diff --git a/docs/PLUGINS.md b/docs/PLUGINS.md
+index faf95c4e..34049255 100644
+--- a/docs/PLUGINS.md
++++ b/docs/PLUGINS.md
+@@ -408,6 +408,10 @@ white on black whatever the screen's look. `on_tick` comes from `tick_cards`, so
+ too. A new word for the same saver goes to `on_state` in place (`saver_state`); a finger's wish on the player is laid
+ over `x` (`state`, `muted`) before the saver hears it.
+ 
++**Live options (0.15).** Override `on_options(JsonObjectConst options)` to repaint existing parts when the editor changes the saver options. The initial options arrive in `show()`; later changes arrive independently of the step state, even when that state is unchanged. Copy values you keep. The host rechecks `frame_interval_ms()` after each options change, stopping, starting or retiming its timer as needed.
++
++**Live options (0.15).** Override `on_options(JsonObjectConst options)` to repaint existing parts when the editor changes the saver options. Initial options arrive in `show()`; later changes arrive independently of the step state. Copy values you keep. The host rechecks `frame_interval_ms()` after each change, stopping, starting or retiming its timer as needed.
++
+ **Animation (0.15).** A saver may override `frame_interval_ms() const` and `on_frame(uint32_t now_ms)` for motion
+ between the one-second clock ticks. The default interval is 0, with no animation timer or frame callbacks. Return 33
+ for about 30 frames per second (a good starting point for a sweeping clock hand), or 16 for about 60. Nonzero intervals
+diff --git a/screen_manager/CHANGELOG.md b/screen_manager/CHANGELOG.md
+index c56c5c58..53ff548c 100644
+--- a/screen_manager/CHANGELOG.md
++++ b/screen_manager/CHANGELOG.md
+@@ -1,5 +1,7 @@
+ ## Unreleased
+ 
++- Plugin screensaver options update on the glass while visible, including animation speed, without recreating the face.
++
+ - **Smooth animation for plugin screensavers.** A screensaver can request animation callbacks at about 30 or 60
+   frames per second through plugin API 0.15. Existing screensavers keep their once-per-second clock updates;
+   animation stops when the screensaver leaves. Actual frame rates depend on the screen and what it draws.
+diff --git a/tests/test_saver_animation.py b/tests/test_saver_animation.py
+index b084d076..4c05b3ea 100644
+--- a/tests/test_saver_animation.py
++++ b/tests/test_saver_animation.py
+@@ -67,6 +67,7 @@ static lv_timer_t *lv_timer_create(void (*callback)(lv_timer_t *), uint32_t peri
+   ++made;
+   return active_timer = new lv_timer_t{callback, period};
+ }
++static void lv_timer_set_period(lv_timer_t *timer, uint32_t period) { timer->period = period; }
+ static void lv_timer_delete(lv_timer_t *timer) {
+   assert(timer == active_timer);
+   active_timer = nullptr;
+@@ -167,6 +168,20 @@ int main() {
+   }
+ 
+   auto *probe = open(33);
++  saver_animate();
++  int created = made;
++  probe->period = 16;
++  saver_animate();
++  assert(active_timer->period == 16 && made == created);
++  probe->period = 0;
++  saver_animate();
++  assert(!active_timer);
++  probe->period = 33;
++  saver_animate();
++  assert(active_timer && active_timer->period == 33);
++  saver_hide();
++
++  probe = open(33);
+   probe->close_in_frame = true;
+   saver_animate();
+   fire(10);
