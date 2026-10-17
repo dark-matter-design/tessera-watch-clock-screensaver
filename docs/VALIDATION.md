@@ -1,34 +1,33 @@
 # Validation
 
-Version 0.2.0 requires Tessera plugin API 0.14. The updated face still needs testing on physical screens before a stable release.
+Version 0.3.0 uses the API 0.15 animation callbacks plus the live-options addition on the Tessera fork's `codex/live-saver-options` branch. The interactive preview also requires that branch's app changes. These are desktop builds and browser checks; physical panel refresh speed remains unmeasured.
 
 ## Completed results
 
-On 18 October 2026 (Australia/Sydney), [CI run 39073679000](https://github.com/dark-matter-design/tessera-watch-clock-screensaver/actions/runs/39073679000) passed the official checker, native C++ geometry tests, five strict real-firmware preview benches and store image generation for source revision `dced190`.
+On 18 October 2026 (Australia/Sydney), [CI run 39074771622](https://github.com/dark-matter-design/tessera-watch-clock-screensaver/actions/runs/39074771622) passed the official checker, native geometry/interpolation tests, host timer lifecycle tests, five strict real-firmware preview benches and store-image generation for source revision `3d0acad`.
 
-The benches produced **80 screenshots with zero findings**: eight scenarios in both screen themes for each of these profiles:
+The benches produced **80 screenshots with zero findings** across eight scenarios and both screen themes on:
 
-- CYD, 320 x 240.
-- Guition 4-inch square, 480 x 480.
-- Guition 7-inch JC1060P470, 1024 x 600.
-- Guition 7-inch JC1060P470 V2, 1024 x 600.
-- Guition 10.1-inch JC8012P4A1, 1280 x 800.
+- CYD, 320 × 240.
+- Guition 4-inch square, 480 × 480.
+- Guition 7-inch JC1060P470, 1024 × 600.
+- Guition 7-inch JC1060P470 V2, 1024 × 600.
+- Guition 10.1-inch JC8012P4A1, 1280 × 800.
 
-Scenarios cover the green background with black numerals and date, the black background with coloured date, adaptive spacing, hidden seconds/date, UTC numeric date, a white background at 50% clock scale, the narrow top-left date corner, and a top-aligned small clock with a long numeric date.
+Each profile also exercises live background inversion/restoration, date visibility, scale/alignment and animation speed over the normal device API. It checks that settings change the rendered image without recreating the saver; captures separate frames to confirm smooth hands move within a wall-clock second at both requested frame rates; and confirms Tick mode stops interpolation. This verifies animation behaviour, not sustained panel throughput.
 
-The store image, normal and inverted faces, small numeric date, and top-left date cases were visually inspected. Every coloured-background screenshot was also checked at all four corners to confirm it fills the glass without black seams. Long numeric dates move into free space when they cannot fit beside the large numerals. The artwork uses Tessera's drift while the solid background stays fixed.
+Geometry tests cover fractional hand angles, second transitions, delayed frames, clock corrections, monotonic rollover, square/adaptive sizing, aspect cap, scale clamping and alignment. Host tests cover timer creation, retiming, disabling, restart and safe teardown, including a saver that closes inside its callback.
 
-Geometry tests cover cardinal hand directions, fractional hour/minute angles, square/adaptive sizing, the 1.65 aspect cap, scale clamping, alignment and stroke bounds across display sizes. Generated numeral consistency is checked separately. These are desktop builds of the real firmware, not physical panel tests.
+The small/large firmware images, date corners, normal/inverted faces and store picture were visually reviewed. Numerals use native Tessera font sizes with no bitmap enlargement. Browser-preview colour inversion, scale, date visibility and animation controls were inspected in a sandboxed iframe with Tessera's Roboto font.
 
-The optional editor preview patch has its own tests and limitations documented in [compatibility/README.md](../compatibility/README.md). It has not been applied to Tessera or submitted upstream.
+The Tessera app changes passed 27 related editor tests, four focused backend preview tests, changed-file ESLint, source/test TypeScript checks and a production editor build. The original 20 screensaver backend regressions also passed. The wider catalogue suite has Linux-only `os.fchmod` calls and needs Linux before upstream integration. See [preview integration](../compatibility/README.md).
 
-## Physical checks remaining for 0.2.0
+## Physical checks remaining
 
-- Update and rebuild each intended Guition screen, then test the larger coloured date and all face colours.
-- Toggle Coloured background, including white, and check the contrasting hands.
-- Check date positions, formats, sizes, scale and alignment.
-- Verify midnight, time correction, screen time zone, UTC and daylight-saving changes.
-- Leave running for several hours; confirm drift, readable night brightness and stable memory.
-- Verify touch wake, alerts, step changes, black-screen sleep and firmware update teardown.
+- Install the matching Tessera fork/app and Watch Clock update; rebuild and upload each intended Guition screen once.
+- Change all face options in standby and confirm both the device and editor preview respond.
+- Compare 30 and 60 FPS on the 4-, 7- and 10-inch screens, including touch responsiveness and long-running behaviour.
+- Check midnight, time corrections, UTC, screen time zone and daylight-saving changes.
+- Verify burn-in drift, night brightness, wake, alerts, step changes and firmware-update teardown.
 
-`flash_kb` remains an estimate pending a device build. The 4608-byte saver budget includes its retained points, members and twelve LVGL objects. Desktop previews do not verify real-panel refresh speed, electrical behaviour or device memory pressure.
+`flash_kb` is an estimate pending a device build. The conservative 4608-byte saver budget now holds eleven LVGL objects, hand point buffers and members; custom numeral point arrays have been removed. Browser HTML/font assets are app preview files and are not compiled into firmware.

@@ -17,3 +17,7 @@ The MIT license and its copyright notice are reproduced in `licenses/Tessera-MIT
 ## Tessera editor compatibility patch
 
 `compatibility/tessera-saver-preview.patch` modifies source from MaxGramser/homeassistant_espscreen, dev revision `b18ee2f`. This patch is AGPL-3.0-or-later, separately from the Apache-2.0 firmware plugin. The upstream license is reproduced in `licenses/Tessera-AGPL-3.0.txt`.
+
+## Roboto browser-preview font
+
+The self-contained `previews/watch.html` embeds Tessera's Roboto Regular font, from `fonts/Roboto-400.ttf`, under SIL Open Font License 1.1. Its license is reproduced in `licenses/Roboto-OFL.txt`. It adds no font to the device firmware.

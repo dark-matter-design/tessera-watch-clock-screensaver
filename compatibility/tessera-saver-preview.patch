@@ -1,5 +1,5 @@
 diff --git a/docs/PLUGINS.md b/docs/PLUGINS.md
-index 5812da8..21473f9 100644
+index 5812da8..1d82eee 100644
 --- a/docs/PLUGINS.md
 +++ b/docs/PLUGINS.md
 @@ -366,6 +366,13 @@ picture store of a 4-inch Guition's size, so its renders show every picture of a
@@ -16,13 +16,34 @@ index 5812da8..21473f9 100644
  The screensaver is a list of steps in the order the person put them (docs/SCREENSAVER.md): the music that plays, the
  photos of a folder, a camera, the clock. ESP Screen Manager picks the first that has something to show; the screen
  shows it over the whole glass while Auto standby dims it. A plugin adds to that list in two ways, and never beside it:
+@@ -434,3 +441,18 @@ tests/test_saver_plugins.py.
+ 
+ A plugin's own messages beyond Home Assistant commands, Python modules of Tessera's own plugins in the add-on (the
+ design's `module`), and plugin faces of the camera step.
++
++
++### Interactive screensaver preview (community integration)
++
++A declared saver may additionally include `previews/<id>.html`, a self-contained UTF-8 HTML document (at most 512 KiB).
++The editor loads it through the pinned image endpoint with `saver=<id>&interactive=1`, in an iframe with only
++`sandbox="allow-scripts"`. The response also enforces a CSP sandbox: no same-origin access, network, forms, navigation,
++external scripts or external styles. Inline code/styles and data fonts/images are allowed. Never pass secrets to it.
++A missing HTML preview keeps the PNG, then the existing icon/example fallback.
++
++Once ready, the iframe posts `{type: "tessera:preview-ready"}` to its parent. The parent verifies `event.source` and
++replies with `{type: "tessera:preview", options, size: {width,height}, shape, now, language}`. `shape` includes the board's
++font sizes, density and look; `now` is epoch milliseconds. It sends updated values as settings change. A preview must
++accept messages only from `parent`; it has no actions or access to the device. This is an illustration, not firmware
++execution or a measurement of panel frame rate. Keep its appearance in step with the firmware and supply a PNG fallback.
 diff --git a/screen_manager/CHANGELOG.md b/screen_manager/CHANGELOG.md
-index 98a6216..c53d1fb 100644
+index 98a6216..dbb3de1 100644
 --- a/screen_manager/CHANGELOG.md
 +++ b/screen_manager/CHANGELOG.md
-@@ -1,5 +1,9 @@
+@@ -1,5 +1,11 @@
  ## Unreleased
  
++- Plugin Clock previews can optionally respond to options through a sandboxed, self-contained illustration, with a firmware screenshot fallback.
++
 +- **A plugin clock can show its real face in the editor.** Plugins may include a firmware screenshot at
 +  `previews/<saver-id>.png`. The Clock drawer shows it instead of the generic icon and example text, and keeps the
 +  old placeholder when there is no screenshot. This is a static example, not a live rendering of its options.
@@ -31,15 +52,15 @@ index 98a6216..c53d1fb 100644
    start, so it swipes through its pages, opens its settings from the top edge and opens the Dock from the bottom edge
    without turning anything on first. Screens you already have keep the setting they have through the update. Turn it
 diff --git a/screen_manager/app/plugins.py b/screen_manager/app/plugins.py
-index cb2f223..cb1c19d 100644
+index cb2f223..96508b1 100644
 --- a/screen_manager/app/plugins.py
 +++ b/screen_manager/app/plugins.py
-@@ -846,28 +846,34 @@ class Plugins:
+@@ -846,28 +846,46 @@ class Plugins:
                  return None
          return f'api/plugins/{entry.id}/image?v={version or 0}'
  
 -    async def store_image(self, plugin_id):
-+    async def store_image(self, plugin_id, saver_id=None):
++    async def store_image(self, plugin_id, saver_id=None, interactive=False):
          """The PNG of a listed plugin's picture for the Plugins page, or None: from its folder, or fetched from GitHub at
 -        the plugin's commit and kept under data/images (one per plugin), checked to be a PNG of a size the page takes."""
 +        the plugin's commit and kept under data/images (one per plugin), checked to be a PNG of a size the page takes.
@@ -48,25 +69,39 @@ index cb2f223..cb1c19d 100644
 -        if entry is None or not entry.image:
 +        if entry is None or (saver_id is None and not entry.image):
              return None
++        if interactive and saver_id is None:
++            return None
 +        if saver_id is not None and not entry.saver(saver_id):
 +            return None
-+        picture = f'previews/{saver_id}.png' if saver_id is not None else STORE_IMAGE
++        extension = 'html' if interactive else 'png'
++        picture = f'previews/{saver_id}.{extension}' if saver_id is not None else STORE_IMAGE
++        limit = 512 * 1024 if interactive else STORE_IMAGE_MAX
++        def valid(body):
++            if not interactive:
++                return store_image_ok(body)
++            try:
++                return 0 < len(body) <= limit and '<!doctype html' in body.decode('utf-8').lower()[:100]
++            except UnicodeError:
++                return False
 +        cache_id = f'{entry.id}-{saver_id}' if saver_id is not None else entry.id
-+        cache_folder = 'saver-images' if saver_id is not None else 'images'
++        cache_folder = 'saver-html' if interactive else 'saver-images' if saver_id is not None else 'images'
          if entry.folder is not None:
              try:
 -                body = (Path(entry.folder) / STORE_IMAGE).read_bytes()
 +                body = (Path(entry.folder) / picture).read_bytes()
              except OSError:
                  return None
-             return body if store_image_ok(body) else None
+-            return body if store_image_ok(body) else None
++            return body if valid(body) else None
          found = GITHUB_LINK.match(entry.repo or '')
          if not found or not re.fullmatch(r'[0-9a-f]{40}', entry.ref or ''):
              return None
 -        kept = self.data / 'images' / f'{entry.id}-{entry.ref}.png'
-+        kept = self.data / cache_folder / f'{cache_id}-{entry.ref}.png'
++        kept = self.data / cache_folder / f'{cache_id}-{entry.ref}.{extension}'
          try:
-             return kept.read_bytes()
+-            return kept.read_bytes()
++            body = kept.read_bytes()
++            return body if valid(body) else None
          except OSError:
              pass
          base = '' if entry.path in ('', '.') else entry.path.strip('/') + '/'
@@ -75,43 +110,87 @@ index cb2f223..cb1c19d 100644
          import aiohttp
          try:
              if self.http is None or self.http.closed:
-@@ -881,11 +887,11 @@ class Plugins:
+@@ -876,16 +894,16 @@ class Plugins:
+             async with self.http.get(url) as response:
+                 if response.status != 200:
+                     return None
+-                body = bytes(await read_whole(response, STORE_IMAGE_MAX))
++                body = bytes(await read_whole(response, limit))
+         except (aiohttp.ClientError, asyncio.TimeoutError, ValueError) as error:
              LOG.info('Plugin %s: picture not read (%s)', entry.id, error)
              return None
-         if not store_image_ok(body):
+-        if not store_image_ok(body):
 -            LOG.info('Plugin %s: %s is not a PNG the Plugins page takes', entry.id, STORE_IMAGE)
++        if not valid(body):
 +            LOG.info('Plugin %s: %s is not a PNG the editor takes', entry.id, picture)
              return None
          try:
              kept.parent.mkdir(parents=True, exist_ok=True)
 -            for old in kept.parent.glob(f'{entry.id}-*.png'):
-+            for old in kept.parent.glob(f'{cache_id}-*.png'):
++            for old in kept.parent.glob(f'{cache_id}-*.{extension}'):
                  old.unlink(missing_ok=True)
              kept.write_bytes(body)
          except OSError as error:
 diff --git a/screen_manager/app/server.py b/screen_manager/app/server.py
-index f84ee83..4e9b8be 100644
+index f84ee83..67b38b7 100644
 --- a/screen_manager/app/server.py
 +++ b/screen_manager/app/server.py
-@@ -5117,7 +5117,7 @@ def create_app(manager, development=False):
+@@ -4162,6 +4162,11 @@ def create_app(manager, development=False):
+         # The LVGL preview compiles the bundled WASM module. Allow that narrowly;
+         # JavaScript eval and inline scripts remain disallowed.
+         response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'"
++        if (request.path.startswith('/api/plugins/') and request.path.endswith('/image') and
++                request.query.get('interactive') == '1' and response.content_type == 'text/html'):
++            response.headers['Content-Security-Policy'] = ("default-src 'none'; script-src 'unsafe-inline'; "
++                "style-src 'unsafe-inline'; font-src data:; img-src data:; base-uri 'none'; form-action 'none'; sandbox allow-scripts")
++
+         return response
+ 
+     # A layout of 48 tiles with actions on their taps passes 16 KB, the limit from the twenty-tile days; the largest the
+@@ -5117,10 +5122,10 @@ def create_app(manager, development=False):
          async def plugins_image(request):
              # A plugin's picture for the Plugins page (store.png), served by the app: the editor shows no picture of
              # another address (its img-src is 'self').
 -            body = await manager.plugins.store_image(request.match_info['plugin'])
-+            body = await manager.plugins.store_image(request.match_info['plugin'], request.query.get('saver'))
++            body = await manager.plugins.store_image(request.match_info['plugin'], request.query.get('saver'), request.query.get('interactive') == '1')
              if body is None:
                  raise web.HTTPNotFound()
-             return web.Response(body=body, content_type='image/png')
+-            return web.Response(body=body, content_type='image/png')
++            return web.Response(body=body, content_type='text/html' if request.query.get('interactive') == '1' else 'image/png')
+         app.router.add_get('/api/plugins/{plugin}/image', plugins_image)
+ 
+         async def plugins_link(request):
 diff --git a/tests/test_plugin_catalog.py b/tests/test_plugin_catalog.py
-index 48c19d5..6164566 100644
+index 48c19d5..bc06565 100644
 --- a/tests/test_plugin_catalog.py
 +++ b/tests/test_plugin_catalog.py
-@@ -300,6 +300,36 @@ class StoreImage(unittest.IsolatedAsyncioTestCase):
+@@ -300,6 +300,57 @@ class StoreImage(unittest.IsolatedAsyncioTestCase):
  
  
  
 +class SaverPreview(unittest.IsolatedAsyncioTestCase):
 +    service = Catalogue.service
++
++    async def test_interactive_preview_is_pinned_declared_and_cached_separately(self):
++        service = self.catalogue()
++        url = f'https://raw.githubusercontent.com/MaxGramser/tessera-plugins/{"a" * 40}/plugins/clock/previews/dial.html'
++        html = b'<!doctype html><canvas></canvas>'
++        service.http = FakeHttp({url: html})
++        self.assertEqual(await service.store_image('clock', 'dial', True), html)
++        self.assertEqual(await service.store_image('clock', 'dial', True), html)
++        self.assertIsNone(await service.store_image('clock', '../dial', True))
++        self.assertIsNone(await service.store_image('clock', None, True))
++        self.assertEqual(service.http.asked, [url])
++
++    async def test_interactive_preview_rejects_non_html_invalid_utf8_and_large_files(self):
++        service = self.catalogue()
++        folder = service.data.parent / 'preview-clock'
++        (folder / 'previews').mkdir(parents=True)
++        service.index['clock'].folder = folder
++        file = folder / 'previews/dial.html'
++        for body in (b'plain text', b'<!doctype html>\xff', b'<!doctype html>' + b' ' * (512 * 1024)):
++            file.write_bytes(body)
++            self.assertIsNone(await service.store_image('clock', 'dial', True))
 +
 +    def catalogue(self):
 +        return self.service(item('clock', api='0.14', savers=[
@@ -144,19 +223,30 @@ index 48c19d5..6164566 100644
      headers = {}
  
 diff --git a/web/src/components/SaverGlass.vue b/web/src/components/SaverGlass.vue
-index c3cb2e2..fcb3389 100644
+index c3cb2e2..0353625 100644
 --- a/web/src/components/SaverGlass.vue
 +++ b/web/src/components/SaverGlass.vue
-@@ -3,7 +3,7 @@
+@@ -3,9 +3,9 @@
  // and the bottom line with the temperature and the entities, white on black as the screen draws it. A line wider than
  // the glass loses its last entities until it fits, as on the screen, so the temperature always stays.
  // A face of the module (Glass, Classic, Bauhaus) shows as that face instead (SaverFace.vue), and a plugin's face as its
 -// icon and the words of its example: the editor cannot run its drawing.
 +// optional firmware screenshot, or its icon and example when no screenshot exists.
  import { useResizeObserver } from "@vueuse/core";
- import { computed, nextTick, onMounted, ref, watch } from "vue";
+-import { computed, nextTick, onMounted, ref, watch } from "vue";
++import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from "vue";
  import { t } from "../i18n";
-@@ -22,6 +22,13 @@ const region = useRegionStore();
+ import { text } from "../model/plugins";
+ import { glyph } from "../model/topbar";
+@@ -14,6 +14,7 @@ import { useRegionStore } from "../stores/region";
+ import { useTopbarStore } from "../stores/topbar";
+ import { useScreensaverStore } from "../stores/screensaver";
+ import { useUiStore } from "../stores/ui";
++import { useScreenStore } from "../stores/screen";
+ import SaverFace from "./SaverFace.vue";
+ 
+ const topbar = useTopbarStore();
+@@ -22,6 +23,32 @@ const region = useRegionStore();
  const ui = useUiStore();
  const plugins = usePluginsStore();
  const pluginFace = computed(() => (screensaver.clockPluginFace ? plugins.saverOf(screensaver.clockPluginFace) : undefined));
@@ -167,28 +257,51 @@ index c3cb2e2..fcb3389 100644
 +const previewFailed = ref(false);
 +watch(pluginPreview, () => { previewFailed.value = false; });
 +const showPreview = computed(() => Boolean(pluginPreview.value && !previewFailed.value));
++// Plugin code runs in an opaque-origin sandbox, with no same-origin access or network.
++const screen = useScreenStore();
++const frame = ref<HTMLIFrameElement | null>(null);
++const interactiveReady = ref(false);
++const interactiveUrl = computed(() => pluginPreview.value ? `${pluginPreview.value}&interactive=1` : null);
++watch(interactiveUrl, () => { interactiveReady.value = false; });
++function sendPreview() {
++  if (!interactiveReady.value) return;
++  frame.value?.contentWindow?.postMessage({ type: "tessera:preview", options: screensaver.pluginValues(screensaver.clockPluginFace),
++    size: screensaver.glassSize, shape: screen.currentScreen?.shape, now: ui.now, language: region.screenLanguage }, "*");
++}
++function previewMessage(event: MessageEvent) {
++  if (!frame.value?.contentWindow || event.source !== frame.value.contentWindow || event.data?.type !== "tessera:preview-ready") return;
++  interactiveReady.value = true;
++  sendPreview();
++}
++onMounted(() => window.addEventListener("message", previewMessage));
++onBeforeUnmount(() => window.removeEventListener("message", previewMessage));
++watch(() => [screensaver.pluginValues(screensaver.clockPluginFace), screensaver.glassSize, screen.currentScreen?.shape, ui.now, region.screenLanguage], sendPreview, { deep: true });
  const at = computed(() => new Date(ui.now));
  const say = (key: string) => t(key, {}, { locale: region.screenLanguage });
  const words = computed(() => ({
-@@ -51,9 +58,12 @@ useResizeObserver(line, () => measure());
+@@ -51,9 +78,13 @@ useResizeObserver(line, () => measure());
  </script>
  
  <template>
 -  <div v-if="screensaver.clockPluginFace" class="saver-glass plugin" aria-hidden="true" :style="{ aspectRatio: screensaver.glassRatio, height: `${height}px`, '--glass-h': `${height}px` }">
 -    <span class="mdi saver-glass-icon">{{ glyph(pluginFace?.saver.icon || pluginFace?.plugin.icon || "F0A66") }}</span>
 -    <span class="saver-glass-date">{{ pluginFace ? text(pluginFace.saver.example || pluginFace.saver.name) : screensaver.stepLabel(screensaver.clockPluginFace) }}</span>
-+  <div v-if="screensaver.clockPluginFace" class="saver-glass plugin" :class="{ pictured: showPreview }" aria-hidden="true" :style="{ aspectRatio: screensaver.glassRatio, height: `${height}px`, '--glass-h': `${height}px` }">
-+    <img v-if="showPreview" class="saver-glass-preview" :src="pluginPreview!" alt="" @error="previewFailed = true" />
-+    <template v-else>
++  <div v-if="screensaver.clockPluginFace" class="saver-glass plugin" :class="{ pictured: showPreview || interactiveReady }" aria-hidden="true" :style="{ aspectRatio: screensaver.glassRatio, height: `${height}px`, '--glass-h': `${height}px` }">
++    <iframe v-if="interactiveUrl" ref="frame" class="saver-interactive" :class="{ ready: interactiveReady }" :src="interactiveUrl" sandbox="allow-scripts" tabindex="-1" title="" />
++    <img v-if="showPreview && !interactiveReady" class="saver-glass-preview" :src="pluginPreview!" alt="" @error="previewFailed = true" />
++    <template v-else-if="!interactiveReady">
 +      <span class="mdi saver-glass-icon">{{ glyph(pluginFace?.saver.icon || pluginFace?.plugin.icon || "F0A66") }}</span>
 +      <span class="saver-glass-date">{{ pluginFace ? text(pluginFace.saver.example || pluginFace.saver.name) : screensaver.stepLabel(screensaver.clockPluginFace) }}</span>
 +    </template>
    </div>
    <div v-else-if="screensaver.face !== 'digital'" class="saver-glass face" aria-hidden="true" :style="{ aspectRatio: screensaver.glassRatio, height: `${height}px`, '--glass-h': `${height}px` }">
      <SaverFace :kind="screensaver.face" :dark="screensaver.faceDark" :numerals="screensaver.saver?.numerals ?? 4" :seconds="screensaver.saver?.seconds ?? true"
-@@ -71,6 +81,8 @@ useResizeObserver(line, () => measure());
+@@ -70,7 +101,11 @@ useResizeObserver(line, () => measure());
+ </template>
  
  <style scoped>
++.saver-interactive { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; visibility: hidden; pointer-events: none; }
++.saver-interactive.ready { visibility: visible; }
  .saver-glass.face { padding: 0; overflow: hidden; }
 +.saver-glass.plugin.pictured { padding: 0; overflow: hidden; }
 +.saver-glass-preview { display: block; width: 100%; height: 100%; object-fit: contain; }
@@ -196,22 +309,47 @@ index c3cb2e2..fcb3389 100644
    border-radius: calc(var(--glass-h) * 0.07); background: #000; color: #fff; padding: 0 10px; }
  .saver-glass-time { font-size: calc(var(--glass-h) * 0.25); font-weight: 300; line-height: 1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
 diff --git a/web/tests/screensaver-plugins.spec.ts b/web/tests/screensaver-plugins.spec.ts
-index 347e267..7bdacbf 100644
+index 347e267..bea8e7c 100644
 --- a/web/tests/screensaver-plugins.spec.ts
 +++ b/web/tests/screensaver-plugins.spec.ts
-@@ -5,6 +5,7 @@ import { flushPromises, mount } from "@vue/test-utils";
- import { describe, expect, it } from "vitest";
+@@ -2,9 +2,10 @@
+ // screen takes it, a plugin's own steps added, moved and taken off, the plugin faces of the clock, the music and the
+ // photos, a step's entity and options, the folder chosen by browsing, and the whole choice sent to the add-on.
+ import { flushPromises, mount } from "@vue/test-utils";
+-import { describe, expect, it } from "vitest";
++import { describe, expect, it, vi } from "vitest";
  import ScreensaverCard from "../src/components/ScreensaverCard.vue";
  import SaverClock from "../src/components/SaverClock.vue";
 +import SaverGlass from "../src/components/SaverGlass.vue";
  import SaverInspector from "../src/components/SaverInspector.vue";
  import { i18n } from "../src/i18n";
  import type { Plugin } from "../src/model/plugins";
-@@ -19,6 +20,24 @@ import { fakeApi } from "./helpers/fake-api";
+@@ -19,6 +20,45 @@ import { fakeApi } from "./helpers/fake-api";
  const t = (key: string, named: Record<string, unknown> = {}) => i18n.global.t(key, named);
  const T = (key: string, named: Record<string, unknown> = {}) => t(`editor.screen_settings.screensaver.${key}`, named);
  
 +describe("a plugin clock screenshot", () => {
++  it("isolates an interactive preview and sends current options only to its own frame", async () => {
++    const { saver, plugins } = open();
++    plugins.index = [{ ...radar, image: "api/plugins/radar/image?v=one" }];
++    saver.setFace("clock", "plugin:radar.big");
++    const glass = mount(SaverGlass, { props: { height: 150 }, attachTo: document.body });
++    await flushPromises();
++    const frame = glass.find("iframe");
++    expect(frame.attributes("sandbox")).toBe("allow-scripts");
++    expect(frame.attributes("src")).toBe("api/plugins/radar/image?v=one&saver=big&interactive=1");
++    const target = (frame.element as HTMLIFrameElement).contentWindow!;
++    const post = vi.spyOn(target, "postMessage");
++    window.dispatchEvent(new MessageEvent("message", { source: window, data: { type: "tessera:preview-ready" } }));
++    expect(post).not.toHaveBeenCalled();
++    window.dispatchEvent(new MessageEvent("message", { source: target, data: { type: "tessera:preview-ready" } }));
++    expect(post).toHaveBeenLastCalledWith(expect.objectContaining({ type: "tessera:preview", options: { bold: false }, size: { width: 800, height: 480 } }), "*");
++    saver.setPluginOption("plugin:radar.big", "bold", true);
++    await flushPromises();
++    expect(post).toHaveBeenLastCalledWith(expect.objectContaining({ options: { bold: true } }), "*");
++    expect(glass.find("img").exists()).toBe(false);
++    glass.unmount();
++  });
 +  it("loads the declared face through the app and falls back when the image is missing", async () => {
 +    const { saver, plugins } = open();
 +    plugins.index = [{ ...radar, image: "api/plugins/radar/image?v=one" }];

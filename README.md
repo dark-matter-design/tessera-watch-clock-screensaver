@@ -56,6 +56,8 @@ python ../tessera-plugins/tools/preview.py . --strict
 python ../tessera-plugins/tools/store_image.py . --from .preview
 ```
 
+For 0.3.0, point `TESSERA_TREE` at a checkout of your Tessera fork's `codex/live-saver-options` branch. Set `TESSERA_MANIFEST` to that checkout's `screen_manager/app/plugin_manifest.py` and `TESSERA_BOARDS` to its `screen_manager/app/boards.json` for the checker. Stock Tessera's API 0.14 cannot validate or build the new callbacks. `python tools/generate_preview.py` bundles the browser illustration with that checkout's Roboto font.
+
 The official preview bench needs Linux/macOS or WSL with a C++ compiler and SDL2. GitHub Actions runs the manifest checker, geometry tests and real firmware preview on five board profiles in parallel. Its downloadable `watch-clock-preview` artifact contains rendered screens and findings. See [validation notes](docs/VALIDATION.md) for test coverage and hardware limitations.
 
 The additional Guition checks cover the 7-inch JC1060P470 and V2 (1024 x 600), alongside the square 4-inch ESP32-S3-4848S040 (480 x 480) and 10.1-inch JC8012P4A1 (1280 x 800). Both 7-inch boards support standby in Tessera's catalog; their hardware support is marked experimental upstream.
@@ -68,4 +70,4 @@ Original watch proportions: dark-matter-design's Kiosk Satellite Watch Clock, Ap
 
 ## Preview in Tessera
 
-The plugin listing uses the generated `store.png` from the loaded plugin revision. Update the plugin to 0.3.0 and refresh Tessera to load the new image; old pinned revisions may lack the store picture. The Screensaver → Clock editor currently replaces every third-party face with its icon and example text. A plugin cannot replace that editor component through the current manifest API. The [prepared Tessera editor integration patch](compatibility/README.md) is kept in this repository and has not been submitted upstream or applied to your add-on.
+The plugin listing uses the generated `store.png` from the loaded plugin revision. Update the plugin to 0.3.0 and refresh Tessera to load the new image; old pinned revisions may lack the store picture. The [Tessera editor integration](compatibility/README.md) adds a live Clock illustration that responds to face settings, with a firmware screenshot fallback. It requires the matching app change on your fork's review branch; updating the plugin alone cannot enable it. A patch copy remains in this repository and has not been submitted upstream.

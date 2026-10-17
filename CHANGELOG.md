@@ -4,6 +4,7 @@
 - Replaces outlined vector numerals with Tessera's built-in digit font.
 - Adds smooth 30 FPS hands by default, with 1 FPS and 60 FPS choices. Frame rates are requests, subject to hardware performance.
 - Applies all face options while the saver is visible, with matching live-options support in the Tessera fork.
+- Adds an interactive Clock preview that follows the selected settings, through the matching Tessera editor integration.
 - Requires the API 0.15 animation firmware plus the live-options patch in compatibility/. Update the firmware once to enable these features.
 
 ## 0.2.0 - 2026-10-18
