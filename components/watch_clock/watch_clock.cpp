@@ -42,9 +42,8 @@ class WatchSaver : public tessera::Saver {
     const theme::Role background = inverted ? role : theme::CAMERA_PAGE;
     const theme::Role ink = inverted ? theme::QR_DARK : role;
     const theme::Role hand_ink = inverted && !std::strcmp(colour, "white") ? theme::QR_DARK : theme::CLOCK_HAND;
-    auto *ground = ui::block(c.parent, background);
-    lv_obj_set_style_radius(ground, 0, 0);
-    lv_obj_set_size(ground, c.width, c.height);
+    lv_obj_set_style_bg_color(c.parent, ui::color(background), 0);
+    lv_obj_set_style_bg_opa(c.parent, LV_OPA_COVER, 0);
     // Keep the solid background fixed. Move only this inset transparent group,
     // so inversion fills the glass without a black stripe at the drifted edge.
     face_ = lv_obj_create(c.parent);
