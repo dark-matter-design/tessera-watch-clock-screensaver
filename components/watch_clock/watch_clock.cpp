@@ -66,6 +66,11 @@ class WatchSaver : public tessera::Saver {
     utc_ = !std::strcmp(c.options["timezone"] | "screen", "utc");
     date_ = ui::label(face_, Font::VALUE, ink);
     lv_obj_add_flag(date_, LV_OBJ_FLAG_HIDDEN);
+    // Keep the translucent shadows below every hand, including at crossings.
+    for (int i = 0; i < 3; ++i) {
+      shadows_[i] = line(face_, ((i == 2 ? .85f : 6.2f) + 1.6f) * art_.unit, theme::QR_DARK);
+      lv_obj_set_style_line_opa(shadows_[i], 32, 0);
+    }
     hour_ = line(face_, 6.2f * art_.unit, hand_ink);
     minute_ = line(face_, 6.2f * art_.unit, hand_ink);
     ring_ = ui::block(face_, background);
@@ -75,7 +80,7 @@ class WatchSaver : public tessera::Saver {
     lv_obj_set_style_radius(ring_, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_border_width(ring_, std::max(1, static_cast<int>(1.2f * art_.unit)), 0);
     lv_obj_set_style_border_color(ring_, ui::color(hand_ink), 0);
-    second_ = line(face_, .85f * art_.unit, inverted ? theme::QR_DARK : hand_ink);
+    second_ = line(face_, .85f * art_.unit, hand_ink);
     pivot_ = ui::block(face_, hand_ink);
     const int dot = std::max(2, static_cast<int>(3.6f * art_.unit));
     lv_obj_set_size(pivot_, dot, dot);
@@ -102,6 +107,10 @@ class WatchSaver : public tessera::Saver {
       now.hour = utc_time.tm_hour; now.minute = utc_time.tm_min; now.second = utc_time.tm_sec;
     }
     const auto a = geometry::angles(now.hour, now.minute, now.second);
+    const float dx = .7f * art_.unit, dy = 1.0f * art_.unit;
+    update_hand(shadows_[0], shadow_points_[0], 48, 9, a.hour, dx, dy);
+    update_hand(shadows_[1], shadow_points_[1], 82, 10, a.minute, dx, dy);
+    if (seconds_) update_hand(shadows_[2], shadow_points_[2], 91, 13, a.second, dx, dy);
     update_hand(hour_, hour_points_, 48, 9, a.hour);
     update_hand(minute_, minute_points_, 82, 10, a.minute);
     if (seconds_) update_hand(second_, second_points_, 91, 13, a.second);
@@ -158,9 +167,10 @@ class WatchSaver : public tessera::Saver {
     lv_obj_set_pos(part, std::lround(box.x), std::lround(box.y));
     lv_obj_add_event_cb(part, draw_number, LV_EVENT_DRAW_MAIN, &number);
   }
-  void update_hand(lv_obj_t *part, lv_point_precise_t (&points)[2], float length, float tail, float angle) {
-    const auto end = geometry::hand(cx_, cy_, length * art_.unit, angle);
-    const auto start = geometry::hand(cx_, cy_, -tail * art_.unit, angle);
+  void update_hand(lv_obj_t *part, lv_point_precise_t (&points)[2], float length, float tail, float angle,
+                   float dx = 0, float dy = 0) {
+    const auto end = geometry::hand(cx_ + dx, cy_ + dy, length * art_.unit, angle);
+    const auto start = geometry::hand(cx_ + dx, cy_ + dy, -tail * art_.unit, angle);
     lv_point_precise_t next[2] = {};
     next[0].x = std::lround(start.x); next[0].y = std::lround(start.y);
     next[1].x = std::lround(end.x); next[1].y = std::lround(end.y);
@@ -182,6 +192,7 @@ class WatchSaver : public tessera::Saver {
     if (!value && !lv_obj_has_flag(part, LV_OBJ_FLAG_HIDDEN)) lv_obj_add_flag(part, LV_OBJ_FLAG_HIDDEN);
   }
   void set_hands_visible(bool value) {
+    for (int i = 0; i < 3; ++i) visible(shadows_[i], value && (i != 2 || seconds_));
     visible(hour_, value); visible(minute_, value); visible(second_, value && seconds_);
     visible(ring_, value); visible(pivot_, value);
   }
@@ -254,6 +265,8 @@ class WatchSaver : public tessera::Saver {
   Number numbers_[4]{};
   outline::Box numeral_boxes_[4]{};
   lv_point_precise_t hour_points_[2]{}, minute_points_[2]{}, second_points_[2]{};
+  lv_point_precise_t shadow_points_[3][2]{};
+  lv_obj_t *shadows_[3]{};
   lv_obj_t *face_{}, *hour_{}, *minute_{}, *second_{}, *ring_{}, *pivot_{}, *date_{};
 };
 void WatchClock::setup() {

@@ -97,18 +97,21 @@ function render(timestamp) {
     }
     label(text, lx, ly, fs, weight);
   }
-  const ray = (length, tail, degrees, width, colour) => {
+  const ray = (length, tail, degrees, width, colour, dx = 0, dy = 0) => {
     const a = degrees * Math.PI / 180;
-    ctx.beginPath(); ctx.moveTo(cx - Math.sin(a) * tail * u, cy + Math.cos(a) * tail * u);
-    ctx.lineTo(cx + Math.sin(a) * length * u, cy - Math.cos(a) * length * u);
+    ctx.beginPath(); ctx.moveTo(cx + dx - Math.sin(a) * tail * u, cy + dy + Math.cos(a) * tail * u);
+    ctx.lineTo(cx + dx + Math.sin(a) * length * u, cy + dy - Math.cos(a) * length * u);
     ctx.lineWidth = Math.max(1, Math.floor(width * u)); ctx.lineCap = 'round'; ctx.strokeStyle = colour; ctx.stroke();
   };
   const m = minute + (second + fraction) / 60;
+  ray(48, 9, (hour % 12 + m / 60) * 30, 7.8, 'rgba(0,0,0,0.1255)', .7 * u, u);
+  ray(82, 10, m * 6, 7.8, 'rgba(0,0,0,0.1255)', .7 * u, u);
+  if (o.seconds !== false) ray(91, 13, (second + fraction) * 6, 2.45, 'rgba(0,0,0,0.1255)', .7 * u, u);
   ray(48, 9, (hour % 12 + m / 60) * 30, 6.2, hand);
   ray(82, 10, m * 6, 6.2, hand);
   ctx.beginPath(); ctx.arc(cx, cy, Math.max(3, Math.floor(9.2 * u)) / 2, 0, Math.PI * 2);
   ctx.fillStyle = bg; ctx.fill(); ctx.lineWidth = Math.max(1, Math.floor(1.2 * u)); ctx.strokeStyle = hand; ctx.stroke();
-  if (o.seconds !== false) ray(91, 13, (second + fraction) * 6, .85, o.invert ? '#000000' : hand);
+  if (o.seconds !== false) ray(91, 13, (second + fraction) * 6, .85, hand);
   ctx.beginPath(); ctx.arc(cx, cy, Math.max(2, Math.floor(3.6 * u)) / 2, 0, Math.PI * 2);
   ctx.fillStyle = hand; ctx.fill(); ctx.restore();
 }

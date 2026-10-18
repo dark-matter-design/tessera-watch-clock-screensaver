@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.1 - 2026-10-18
+- Keeps the seconds hand white on coloured backgrounds, matching the hour and minute hands. All hands remain black on a white background for contrast.
+- Adds a faint offset shadow beneath each hand, scaled with the clock face.
+- Update the plugin and rebuild the screen firmware to apply these changes.
+
 ## 0.5.0 - 2026-10-18
 - Replaces the original stroke numerals with filled vector outlines extracted from the supplied SF Pro Rounded Bold font.
 - Adds coverage-based edge smoothing and adaptive curve subdivision at the screen's native resolution.

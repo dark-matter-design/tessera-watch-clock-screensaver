@@ -6,7 +6,7 @@ A native screensaver face for Tessera, ported from [Watch Clock for Kiosk Satell
 
 Full firmware previews: [black-background face](docs/previews/guition-4-inch-black.png), [4-inch square](docs/previews/guition-4-inch.png), [7-inch](docs/previews/guition-7-inch.png), [10.1-inch adaptive](docs/previews/guition-10-inch-adaptive.png).
 
-**Works with standard Tessera 0.4.89 / firmware 0.57.0 (API 0.14).** Version 0.5.0 adds filled rounded numeral outlines with coverage-based edge smoothing. No Tessera fork, compatibility patch or firmware-source override is needed.
+**Works with standard Tessera 0.4.89 / firmware 0.57.0 (API 0.14).** Version 0.5.1 keeps the seconds hand white on coloured backgrounds and adds subtle hand shadows. No Tessera fork, compatibility patch or firmware-source override is needed.
 
 ## Set up
 
@@ -69,7 +69,7 @@ Original watch proportions: dark-matter-design's Kiosk Satellite Watch Clock, Ap
 
 ## Preview in Tessera
 
-The plugin listing uses the generated `store.png` from the loaded plugin revision. Update the plugin to 0.5.0 and refresh Tessera to load its image. Standard Tessera's Clock drawer displays only an icon and the plugin's example text; it does not load `store.png` or the optional browser illustration there. Updating the plugin cannot change that panel. See the Plugins page or the full firmware screenshots linked above for the actual appearance. The optional editor integration under [compatibility/](compatibility/README.md) is historical and is not required to install or run this version.
+The plugin listing uses the generated `store.png` from the loaded plugin revision. Update the plugin to 0.5.1 and refresh Tessera to load its image. Standard Tessera's Clock drawer displays only an icon and the plugin's example text; it does not load `store.png` or the optional browser illustration there. Updating the plugin cannot change that panel. See the Plugins page or the full firmware screenshots linked above for the actual appearance. The optional editor integration under [compatibility/](compatibility/README.md) is historical and is not required to install or run this version.
 
 To regenerate the numeral data, install FontTools and run `python tools/extract_font_numerals.py /path/to/SF-Pro-Rounded-Bold.otf`.
 The extractor records the input SHA256 in `numerals.h`. Only the contours for 12, 3, 6 and 9 are committed. The optional
