@@ -16,6 +16,12 @@ code generation from standard upstream URLs. Its 80 screenshots cover eight scen
 CYD, Guition 4-inch, both 7-inch models and the 10.1-inch model. Fork-only timer and live-settings tests are no longer
 part of validation. Physical device checks remain necessary; a desktop render is not a hardware test.
 
+On 18 October 2026 (Australia/Sydney), [CI run 39085654714](https://github.com/dark-matter-design/tessera-watch-clock-screensaver/actions/runs/39085654714)
+passed all five strict upstream firmware benches, the manifest/geometry checks, upstream ESP32 code generation and
+store-image generation for source revision `c16606f`. The combined report contains 80 screenshots and zero findings.
+The smallest and largest screens, light/dark scenarios, square-screen face and generated store picture were visually
+reviewed. The committed preview PNGs and store picture come from this API 0.14 run.
+
 ## Historical 0.4.0 fork results
 
 The results below apply only to the previous fork-dependent version. They do not establish standard-repository
