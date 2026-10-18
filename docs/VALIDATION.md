@@ -24,7 +24,21 @@ code generation from standard upstream URLs. Its 80 screenshots cover eight scen
 CYD, Guition 4-inch, both 7-inch models and the 10.1-inch model. Fork-only timer and live-settings tests are no longer
 part of validation. Physical device checks remain necessary; a desktop render is not a hardware test.
 
-### Completed 0.4.2 validation
+### Completed 0.5.0 validation
+
+[CI run 39091127290](https://github.com/dark-matter-design/tessera-watch-clock-screensaver/actions/runs/39091127290)
+passed all five strict upstream firmware benches, native coverage/geometry tests, API 0.14 manifest checks, upstream
+ESP32 code generation and store-image generation for source revision `9dc922f`. Its combined report contains
+80 screenshots and zero findings. The smallest and largest displays in both themes, the square screen and store
+image were visually reviewed. The current PNGs are generated from this run. Physical panel performance and
+long-running redraw behaviour still require device testing.
+
+The supplied OTF has SHA256 `78b0cd56679ab2165b2295223d6519abce139db0795493bf6376f6dd9b50041b`.
+It is not committed. The four extracted glyph groups contain 1,228 vector vertices and seven contours. Tests verify
+filled area against signed polygon area, preservation of holes, partial-alpha edges and equivalent clipped redraws
+at 20-, 80- and 257-pixel glyph heights. A separate layout check found no opaque overlap between adjacent numerals.
+
+### Previous 0.4.2 validation
 
 The current vector-numeral version passed [CI run 39087252954](https://github.com/dark-matter-design/tessera-watch-clock-screensaver/actions/runs/39087252954)
 for source revision `48c84fc` on 18 October 2026 (Australia/Sydney): all five strict upstream firmware benches,
