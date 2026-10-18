@@ -10,16 +10,8 @@ int main() {
   near(a.hour, 105.25f); near(a.minute, 183); near(a.second, 180);
   a = angles(0, 0, 0); near(a.hour, 0); near(a.minute, 0);
   a = angles(23, 59, 59); assert(a.hour < 360 && a.hour > 359.9f);
-  a = angles(15, 30, 30.5f);
-  near(a.second, 183); near(a.minute, 183.05f);
-  SecondPhase phase;
-  near(phase.fraction(100, 500), 0);
-  near(phase.fraction(100, 533), .033f);
-  near(phase.fraction(100, 1500), .999f); // delayed frames cannot overrun a second
-  near(phase.fraction(101, 1501), 0);
-  near(phase.fraction(80, 1600), 0); // clock correction
-  phase = {100, UINT32_MAX - 10};
-  near(phase.fraction(100, 22), .033f); // monotonic rollover
+  a = angles(15, 30, 31);
+  near(a.second, 186); near(a.minute, 183.1f);
   const Point expected[] = {{100,0},{200,100},{100,200},{0,100}};
   for (int i=0; i<4; ++i) {
     auto p=hand(100,100,100,90.0f*i); near(p.x,expected[i].x); near(p.y,expected[i].y);
@@ -41,5 +33,5 @@ int main() {
       if(align==3) near(l.y,0); if(align==4) near(l.y+l.height,size[1]);
 
     }
-  std::cout << "Geometry: fractional angles, clock corrections, rollover, scales, aspect ratios and alignments passed\n";
+  std::cout << "Geometry: second ticks, scales, aspect ratios and alignments passed\n";
 }

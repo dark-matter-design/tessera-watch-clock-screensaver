@@ -1,27 +1,20 @@
-# Live options and smooth hands
+# Historical fork setup (versions 0.3.0 and 0.4.0 only)
 
-Watch Clock 0.3.0 uses API 0.15 from [your Tessera fork](https://github.com/dark-matter-design/homeassistant_espscreen). The earlier animation change is already on its main branch. `tessera-live-options.patch` adds `Saver::on_options()` and updates the host timer when animation speed changes. The plugin paints the objects it already has; it never creates a timer or rebuilds the face during a settings change.
+**Watch Clock 0.4.1 uses standard Tessera API 0.14. Do not follow the fork installation instructions below for the current plugin.** Use the normal Tessera app and firmware, update the plugin and rebuild each screen. Remove any `smart_display` source override pointing at the fork before rebuilding. Hands tick once per second; options are read when standby starts. The following instructions are retained only as history.
 
-The corresponding firmware work is on the fork's `codex/live-saver-options` branch. Merge that branch into your fork's main before installing this plugin version, or select that branch in the override below while testing. The branch also includes the live editor-preview integration. Both patch copies remain in this repository.
+Watch Clock 0.4.0 requires **your Tessera fork 0.4.90**, with firmware **0.58.0** and plugin API **0.15**. This release contains live device options, the interactive Clock preview, smooth hand callbacks and the large built-in Roboto digit step.
 
 ## Set up
 
-1. Merge [`codex/live-saver-options`](https://github.com/dark-matter-design/homeassistant_espscreen/compare/main...codex/live-saver-options) into your fork's main branch. In Home Assistant's App store, check for updates and **Rebuild** your existing forked Tessera app to load its updated editor/backend. Keep using that existing app and its data.
-2. Open each screen's **More → Override YAML** and include:
+1. In Home Assistant, open **Settings → Apps → App store → ⋮ → Check for updates**. Update your existing forked Tessera app to **0.4.90**, then start it and refresh its browser page. Its slug and data storage are unchanged; there is no need to uninstall or create another app.
+2. Open Tessera and update Watch Clock to **0.4.0**.
+3. Build/upload each screen once with the plugin update, bringing it to firmware **0.58.0**. If installing the plugin already uploaded 0.58.0, that screen is finished. At startup the app points ordinary screen profiles at this fork's `screens-v0.4.90` tag, including the components and fonts. A manual firmware override is normally unnecessary.
+4. Choose Watch Clock under **Settings → Screensaver → Clock**. Settings update both the Clock illustration and the active device face. Select **Smooth (30 FPS)**, **Fluid (60 FPS)** or **Tick (1 FPS)**.
 
-```yaml
-external_components:
-  - source:
-      type: git
-      url: https://github.com/dark-matter-design/homeassistant_espscreen.git
-      ref: main
-      path: components
-    components: [smart_display]
-    refresh: 0s
-```
+The normal profile migration changes only its recognised firmware package URL/reference and matching `GITHUB_REF`. Wi-Fi, API/OTA credentials, screen name, other packages and local overrides are preserved. Custom branches, commit pins and unrelated forks remain untouched. If you deliberately pinned a custom source, choose the fork's release yourself before building. An explicit old `smart_display` override can also take precedence; remove that old upstream-only entry or point it at this fork.
 
-3. Update Watch Clock to 0.3.0, then build and upload each screen's firmware once.
-4. Open **Settings → Screensaver → Clock**, choose Watch Clock and change its options while it is visible. They update when Tessera delivers the saved setting.
-5. Choose **Hand animation → Smooth (30 FPS)**, **Fluid (60 FPS)** or **Tick (1 FPS)**. This changes every hand's cadence. Achieved frame rate needs checking on your physical 4-, 7- and 10-inch boards.
+The fork repository is `https://github.com/dark-matter-design/homeassistant_espscreen`. The original MaxGramser app is a separate installation and will not receive this fork's update. If you do not see 0.4.90, check that you are looking at the app installed from this fork.
 
-For firmware testing before merging, use `ref: codex/live-saver-options` instead. The app's Clock preview responds to the chosen options and animation mode. Its PNG fallback remains a static example.
+The screen build should now fetch `dark-matter-design/homeassistant_espscreen` at `screens-v0.4.90`, rather than the upstream API 0.14 sources. Updating the app does not flash the devices; run each screen's firmware update once afterwards.
+
+Both historical source patches remain in this repository for reference. They are already included in the versioned fork release and do not need to be applied manually. The editor preview is a browser illustration; physical frame-rate performance still needs checking on the actual panels.

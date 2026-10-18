@@ -5,7 +5,6 @@
 #include <cstdio>
 #include <cstring>
 #include <ctime>
-#include "esphome/core/hal.h"
 
 namespace esphome::watch_clock {
 namespace ui = tessera::ui;
@@ -29,10 +28,10 @@ class WatchSaver : public tessera::Saver {
     ring_ = ui::block(face_, theme::CAMERA_PAGE);
     second_ = line(face_, 1, theme::CLOCK_HAND);
     pivot_ = ui::block(face_, theme::CLOCK_HAND);
-    on_options(c.options);
+    configure(c.options);
   }
 
-  void on_options(JsonObjectConst options) override {
+  void configure(JsonObjectConst options) {
     seconds_ = options["seconds"] | true;
     date_enabled_ = options["date"] | true;
     const bool inverted = options["invert"] | false;
@@ -67,7 +66,7 @@ class WatchSaver : public tessera::Saver {
     const char *digits[] = {"12", "3", "6", "9"};
     const int inset = std::max(1, static_cast<int>(2 * art_.unit));
     numeral_font_ = Font::DIGITS;
-    for (auto font : {Font::WATCH_DIGITS, Font::DIGITS, Font::VALUE, Font::HEADLINE, Font::TITLE}) {
+    for (auto font : {Font::DIGITS, Font::VALUE, Font::HEADLINE, Font::TITLE}) {
       numeral_font_ = font;
       if (ui::line_height(font) <= art_.height * .42f && ui::text_width("12", font) <= art_.width * .60f) break;
     }
@@ -89,8 +88,6 @@ class WatchSaver : public tessera::Saver {
     const char *date_size = options["date_size"] | "large";
     date_size_ = !std::strcmp(date_size, "small") ? 0 : !std::strcmp(date_size, "medium") ? 1 : 2;
     utc_ = !std::strcmp(options["timezone"] | "screen", "utc");
-    const char *motion = options["motion"] | "smooth";
-    interval_ = !std::strcmp(motion, "tick") ? 0 : !std::strcmp(motion, "fluid") ? 16 : 33;
     ui::set_color(date_, ink);
     date_text_[0] = 0;
     for (auto *part : {hour_, minute_}) {
@@ -114,16 +111,13 @@ class WatchSaver : public tessera::Saver {
     on_tick(tessera::epoch());
   }
 
-  uint32_t frame_interval_ms() const override { return interval_; }
-  void on_frame(uint32_t now_ms) override { paint_time(tessera::epoch(), now_ms, true); }
-  void on_tick(uint32_t epoch) override { paint_time(epoch, esphome::millis(), interval_ != 0); }
+  void on_tick(uint32_t epoch) override { paint_time(epoch); }
 
  private:
-  void paint_time(uint32_t epoch, uint32_t now_ms, bool smooth) {
+  void paint_time(uint32_t epoch) {
     const auto drift = tessera::drift(epoch);
     lv_obj_set_pos(face_, margin_ + drift.x, margin_ + drift.y);
     if (!epoch) {
-      phase_ = {};
       set_hands_visible(false); visible(date_, false);
       return;
     }
@@ -137,7 +131,7 @@ class WatchSaver : public tessera::Saver {
       now.day = utc_time.tm_mday; now.weekday = utc_time.tm_wday + 1;
       now.hour = utc_time.tm_hour; now.minute = utc_time.tm_min; now.second = utc_time.tm_sec;
     }
-    const auto a = geometry::angles(now.hour, now.minute, now.second + (smooth ? phase_.fraction(epoch, now_ms) : 0));
+    const auto a = geometry::angles(now.hour, now.minute, now.second);
     update_hand(hour_, hour_points_, 48, 9, a.hour);
     update_hand(minute_, minute_points_, 82, 10, a.minute);
     if (seconds_) update_hand(second_, second_points_, 91, 13, a.second);
@@ -237,8 +231,6 @@ class WatchSaver : public tessera::Saver {
   lv_obj_t *parent_{};
   int width_ = 0, height_ = 0;
   Font numeral_font_ = Font::DIGITS;
-  uint32_t interval_ = 33;
-  geometry::SecondPhase phase_{};
   geometry::Layout art_{};
   float cx_ = 0, cy_ = 0;
   bool seconds_ = true, date_enabled_ = true, date_right_ = false, date_top_ = false, utc_ = false;

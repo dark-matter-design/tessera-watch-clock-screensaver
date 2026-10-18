@@ -29,27 +29,23 @@ jobs:
           path: .research/tessera-plugins
       - uses: actions/checkout@v4
         with:
-          repository: dark-matter-design/homeassistant_espscreen
-          ref: c3dfe8356beeacfb8707bdf678d9818f76fbd706
+          repository: MaxGramser/homeassistant_espscreen
+          ref: 9f6ab3c68d420f454fb905466696063b1d789049
           path: .research/tessera
       - run: pip install pyyaml
       - name: Check manifest and drawing rules
         run: python .research/tessera-plugins/tools/check.py .
       - name: Test native geometry
         run: python tools/test.py
-      - name: Test host timer lifecycle
-        run: python .research/tessera/tests/test_saver_animation.py
       - name: Install preview dependencies
         run: sudo apt-get update && sudo apt-get install -y libsdl2-dev
-      - name: Enable live settings and sweep checks
-        run: python tools/prepare_bench.py
       - name: Preview real firmware
         run: python .research/tessera-plugins/tools/preview.py . --board ${{ matrix.board }} --strict
-      - name: Generate real ESP32 firmware from fork URLs
+      - name: Generate real ESP32 firmware from upstream URLs
         if: matrix.board == 'guition'
         env:
-          TESSERA_CODEGEN_REF: c3dfe8356beeacfb8707bdf678d9818f76fbd706
-        run: .research/tessera-plugins/tools/.cache/preview-venv/bin/python tools/check_fork_build.py
+          TESSERA_CODEGEN_REF: 9f6ab3c68d420f454fb905466696063b1d789049
+        run: .research/tessera-plugins/tools/.cache/preview-venv/bin/python tools/check_upstream_build.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -76,6 +72,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: MaxGramser/homeassistant_espscreen
+          ref: 9f6ab3c68d420f454fb905466696063b1d789049
           path: .research/tessera
           sparse-checkout: fonts
       - uses: actions/download-artifact@v4

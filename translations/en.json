@@ -25,9 +25,9 @@
   },
   "app": {
     "name": "Watch Clock",
-    "summary": "A watch face with native digits, smooth hands, a coloured date and live settings.",
+    "summary": "A watch face with native digits, ticking hands, a coloured date and flexible layouts.",
     "saver_name": "Watch Clock",
-    "saver_example": "A watch face with native digits and smooth sweeping hands.",
+    "saver_example": "A watch face with native digits and hands that tick once per second.",
     "numerals": "Face colour",
     "green": "Green",
     "white": "White",
@@ -45,7 +45,7 @@
     "top": "Top",
     "bottom": "Bottom",
     "seconds": "Seconds hand",
-    "seconds_hint": "Show or hide the seconds hand. Animation speed applies to every hand.",
+    "seconds_hint": "Show or hide the seconds hand. Hands update once per second.",
     "date": "Show date",
     "date_position": "Date position",
     "bottom_left": "Bottom left",
@@ -66,11 +66,6 @@
     "date_size_hint": "Automatically fits longer dates and smaller clock scales.",
     "small": "Small",
     "medium": "Medium",
-    "large": "Large",
-    "motion": "Hand animation",
-    "motion_hint": "Requested frame rate. Actual smoothness depends on your screen and rendering load.",
-    "tick": "Tick (1 FPS)",
-    "smooth": "Smooth (30 FPS)",
-    "fluid": "Fluid (60 FPS)"
+    "large": "Large"
   }
 }

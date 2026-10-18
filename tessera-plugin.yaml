@@ -1,6 +1,6 @@
 id: watch_clock
-version: 0.4.0
-api: '0.15'
+version: 0.4.1
+api: '0.14'
 icon: clock-outline
 maintainer: dark-matter-design
 license: Apache-2.0
@@ -126,16 +126,4 @@ savers:
       label: screen
     - value: utc
       label: utc
-  - id: motion
-    kind: choice
-    label: motion
-    hint: motion_hint
-    default: smooth
-    choices:
-    - value: tick
-      label: tick
-    - value: smooth
-      label: smooth
-    - value: fluid
-      label: fluid
   moves: true

@@ -18,7 +18,6 @@ savers:
   name: Quiet clock
   options:
     seconds: false
-    motion: tick
     date: false
     scale: 75
     alignment: right
@@ -27,7 +26,6 @@ savers:
 - saver: watch
   name: UTC numeric date
   options:
-    motion: fluid
     timezone: utc
     date_format: numeric
     date_position: bottom_right

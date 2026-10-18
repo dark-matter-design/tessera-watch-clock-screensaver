@@ -1,6 +1,8 @@
 # Tessera Clock preview integration
 
-`tessera-saver-preview.patch` is a source patch against Tessera dev revision `b18ee2f`. It has not been submitted upstream. A copy is included on your Tessera fork's `codex/live-saver-options` branch alongside the firmware callback change.
+**Historical, optional integration. Watch Clock 0.4.1 works with standard Tessera API 0.14 without these patches or the fork.** The current plugin uses ticking hands and reads options when its screensaver opens. Standard Tessera's normal editor and the plugin's store image are sufficient. The material below documents the previous fork integration only.
+
+`tessera-saver-preview.patch` is a source patch against Tessera dev revision `b18ee2f`. It has not been submitted upstream. It is included in the versioned Tessera fork release 0.4.90 alongside the firmware callback change and source migration.
 
 The plugin listing uses `store.png`. The Clock drawer uses `previews/watch.html` for a live illustration and falls back to the firmware screenshot `previews/watch.png` when HTML is unavailable, then its icon/example. The HTML uses Tessera's bundled Roboto font and mirrors the native face's options, layout, colours and hand animation. This is a browser illustration, not firmware execution or a prediction of the panel's achieved FPS. Its time follows the editor's clock (UTC when selected); the physical face follows Tessera's device clock.
 
@@ -8,7 +10,7 @@ The backend fetches only a declared saver's asset at its pinned plugin commit, w
 
 ## Set up
 
-Use the fork's review branch for both app and firmware, as described in [LIVE_SETTINGS.md](LIVE_SETTINGS.md). The patch copy is retained here for review or manual application to a Tessera checkout:
+Install the fork's 0.4.90 app update and each screen's 0.58.0 firmware update, as described in [LIVE_SETTINGS.md](LIVE_SETTINGS.md). The patch copy is retained here for review or manual application to a Tessera checkout:
 
 ```sh
 git switch dev

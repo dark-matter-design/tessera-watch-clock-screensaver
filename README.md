@@ -6,7 +6,7 @@ A native screensaver face for Tessera, ported from [Watch Clock for Kiosk Satell
 
 Full firmware previews: [black-background face](docs/previews/guition-4-inch-black.png), [4-inch square](docs/previews/guition-4-inch.png), [7-inch](docs/previews/guition-7-inch.png), [10.1-inch adaptive](docs/previews/guition-10-inch-adaptive.png).
 
-**Requires the Tessera fork with API 0.15 animation and live-options support.** See [firmware setup](compatibility/LIVE_SETTINGS.md). Stock Tessera API 0.14 cannot build this version.
+**Works with standard Tessera 0.4.89 / firmware 0.57.0 (API 0.14).** Version 0.4.1 removes the custom firmware requirement. No Tessera fork, compatibility patch or firmware-source override is needed.
 
 ## Set up
 
@@ -15,7 +15,7 @@ Full firmware previews: [black-background face](docs/previews/guition-4-inch-bla
 3. Add Watch Clock to your screen and build its firmware.
 4. Open that screen's **Settings  ->  Screensaver**, open the **Clock** step and choose **Watch Clock** under **Face**.
 5. Enable **Auto standby**, use a standby brightness above zero and put Clock where you want it in the screensaver order. Any earlier active step takes priority.
-6. Adjust the face options in the Clock drawer. Changes apply to the active face as Tessera sends them; no wake or rebuild is needed for option changes. Touching the face wakes the screen normally.
+6. Adjust the face options in the Clock drawer. The plugin reads them when the screensaver opens; wake the screen and let it enter standby again after changing them. Touching the face wakes the screen normally.
 
 For folder installation, copy the manifest, `plugin.yaml`, `components/`, `translations/`, README and changelog into `/config/tessera-plugins/watch_clock/` beside Home Assistant's `esphome` folder, then add it from Tessera.
 
@@ -29,18 +29,17 @@ For folder installation, copy the manifest, `plugin.yaml`, `components/`, `trans
 | Scale | 50-100%, default 100% |
 | Alignment | Centre (default), Left, Right, Top, Bottom |
 | Seconds hand | On by default |
-| Hand animation | Smooth (30 FPS, default), Fluid (60 FPS), Tick (1 FPS) |
 | Show date | On by default |
 | Date size | Large (default), Medium, Small; automatically fits longer formats and small scales |
 | Date position | Bottom left (default), Bottom right, Top left, Top right |
 | Date format | Short weekday and day (default), Day and short month, Numeric YYYY-MM-DD |
 | Time zone | Screen time zone (default, follows Tessera including DST), UTC |
 
-Adaptive spacing extends the composition on the longer axis, capped at 1.65 times its square dimension. Hands keep the source proportions. Numerals use the largest built-in font that fits, at its native size without bitmap enlargement. A small inset preserves Tessera's burn-in movement at every alignment. Long dates can use free space above or below a scaled clock to stay clear of the numerals. The date uses the largest built-in font that fits the selected size and corner; weekday and month abbreviations come from the plugin's translations (English included). Until the screen's clock is synchronised, the numerals remain visible and the hands and date are hidden.
+Adaptive spacing extends the composition on the longer axis, capped at 1.65 times its square dimension. Hands keep the source proportions. Numerals use standard Tessera's largest built-in digit font that fits, so they are smaller than the fork-only oversized numerals of 0.4.0. Every step is rendered at native resolution without bitmap enlargement. A small inset preserves Tessera's burn-in movement at every alignment. Long dates can use free space above or below a scaled clock to stay clear of the numerals. The date uses the largest built-in font that fits the selected size and corner; weekday and month abbreviations come from the plugin's translations (English included). Until the screen's clock is synchronised, the numerals remain visible and the hands and date are hidden.
 
 ## Differences from Kiosk Satellite
 
-The fork's API 0.15 drives a smooth sweep using elapsed time between wall-clock seconds. Its host owns and stops the animation timer when the saver closes. 30 FPS is the default; 60 FPS requests more rendering work, and physical frame rate depends on the board. The default face uses a black background. Turn on **Coloured background** for the source-style green background with black numerals and date. Hands stay white on coloured faces, with black hands on the white face for contrast. Custom hex colour pickers are unavailable. Time zones are Screen or UTC; choose an IANA time zone in Tessera's screen settings. Numeric dates use ISO order. This clock does not display the Clock step's temperature or entity row.
+Hands tick once per second through Tessera's standard `on_tick` callback. There is no smooth-sweep or FPS setting. The default face uses a black background. Turn on **Coloured background** for the source-style green background with black numerals and date. Hands stay white on coloured faces, with black hands on the white face for contrast. Custom hex colour pickers are unavailable. Time zones are Screen or UTC; choose an IANA time zone in Tessera's screen settings. Numeric dates use ISO order. This clock does not display the Clock step's temperature or entity row.
 
 Tessera owns activation, brightness, night hours, step selection, wake, alerts and firmware updates. The plugin adds a face to the Clock step, with no extra permissions or network access. The artwork follows Tessera's burn-in drift while its solid background stays fixed to fill the glass. Boards that do not support Tessera standby cannot show it.
 
@@ -56,7 +55,7 @@ python ../tessera-plugins/tools/preview.py . --strict
 python ../tessera-plugins/tools/store_image.py . --from .preview
 ```
 
-For 0.3.0, point `TESSERA_TREE` at a checkout of your Tessera fork's `codex/live-saver-options` branch. Set `TESSERA_MANIFEST` to that checkout's `screen_manager/app/plugin_manifest.py` and `TESSERA_BOARDS` to its `screen_manager/app/boards.json` for the checker. Stock Tessera's API 0.14 cannot validate or build the new callbacks. `python tools/generate_preview.py` bundles the browser illustration with that checkout's Roboto font.
+Use an unmodified checkout of `MaxGramser/homeassistant_espscreen` with API 0.14. CI pins upstream revision `9f6ab3c68d420f454fb905466696063b1d789049` (Tessera 0.4.89). `TESSERA_TREE`, `TESSERA_MANIFEST` and `TESSERA_BOARDS` may point at that checkout for reproducible validation. `python tools/generate_preview.py` bundles the optional browser illustration with standard Tessera's Roboto font. Historical fork-only bench helpers are not used by current CI.
 
 The official preview bench needs Linux/macOS or WSL with a C++ compiler and SDL2. GitHub Actions runs the manifest checker, geometry tests and real firmware preview on five board profiles in parallel. Its downloadable `watch-clock-preview` artifact contains rendered screens and findings. See [validation notes](docs/VALIDATION.md) for test coverage and hardware limitations.
 
@@ -70,4 +69,4 @@ Original watch proportions: dark-matter-design's Kiosk Satellite Watch Clock, Ap
 
 ## Preview in Tessera
 
-The plugin listing uses the generated `store.png` from the loaded plugin revision. Update the plugin to 0.3.0 and refresh Tessera to load the new image; old pinned revisions may lack the store picture. The [Tessera editor integration](compatibility/README.md) adds a live Clock illustration that responds to face settings, with a firmware screenshot fallback. It requires the matching app change on your fork's review branch; updating the plugin alone cannot enable it. A patch copy remains in this repository and has not been submitted upstream.
+The plugin listing uses the generated `store.png` from the loaded plugin revision. Update the plugin to 0.4.1 and refresh Tessera to load its image. Standard Tessera uses its normal Clock editor; the optional browser-preview integration under [compatibility/](compatibility/README.md) is historical and is not required to install or run this version.

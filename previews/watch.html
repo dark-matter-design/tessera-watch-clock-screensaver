@@ -15,7 +15,7 @@ let received = performance.now(), last = -Infinity;
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 function render(timestamp) {
   requestAnimationFrame(render);
-  const o = state.options, interval = o.motion === 'tick' ? 1000 : o.motion === 'fluid' ? 16 : 33;
+  const o = state.options, interval = 1000;
   if (timestamp - last < interval) return;
   last = timestamp;
   const W = state.size.width, H = state.size.height;
@@ -23,18 +23,17 @@ function render(timestamp) {
   const shape = state.shape || {}, compact = shape.look === 'compact';
   const look = (shape.dpi || (compact ? 143 : 170)) / (compact ? 143 : 170);
   const fonts = shape.fonts || {};
-  const watchSize = fonts.watch_digits || Math.floor(Math.min(W, H) * .42);
   const fontSizes = [fonts.setpoint || Math.round((compact ? 40 : 64) * look),
     fonts.watch_value || Math.round((compact ? 30 : 38) * look), fonts.headline || Math.round((compact ? 22 : 27) * look),
     fonts.label || Math.round((compact ? 16 : 18) * look), fonts.sublabel || Math.round((compact ? 14 : 16) * look)];
-  ctx.font = `${watchSize}px WatchRoboto`;
-  const glyphMetrics = [...'12369'].map(digit => ctx.measureText(digit));
-  const watchAscent = Math.ceil(Math.max(...glyphMetrics.map(m => m.actualBoundingBoxAscent)));
-  const watchDescent = Math.ceil(Math.max(...glyphMetrics.map(m => m.actualBoundingBoxDescent)));
-  const lineHeight = size => size === watchSize ? watchAscent + watchDescent : Math.round(size * 1.172);
+  const lineHeight = size => Math.round(size * 1.172);
   const font = (size, weight = 400) => { ctx.font = `${weight} ${size}px WatchRoboto`; ctx.textBaseline = 'top'; };
   const measure = (text, size, weight = 400) => { font(size, weight); return ctx.measureText(text).width; };
-  const margin = Math.round(2 * (shape.dpi || 170) / 25.4);
+  const dpi = shape.dpi || (compact ? 143 : 170);
+  const margin = Math.floor((2 * dpi + 12) / 25);
+  const date = new Date(Number(state.now) + performance.now() - received);
+  const driftAngle = (date.getHours() * 60 + date.getMinutes()) * .7;
+  const driftRadius = Math.floor((dpi + 12) / 25);
   const fw = W - 2 * margin, fh = H - 2 * margin;
   const side = Math.min(fw, fh) * clamp(Number(o.scale ?? 100), 50, 100) / 100;
   const u = side / 220;
@@ -50,9 +49,9 @@ function render(timestamp) {
   const bg = o.invert ? colour : '#000000', ink = o.invert ? '#000000' : colour;
   const hand = o.invert && o.numerals === 'white' ? '#000000' : '#ffffff';
   ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-  ctx.save(); ctx.translate(margin, margin);
+  ctx.save(); ctx.translate(margin + Math.round(Math.cos(driftAngle) * driftRadius), margin + Math.round(Math.sin(driftAngle) * driftRadius));
   let size = fontSizes[0];
-  for (const candidate of [watchSize, ...fontSizes.slice(0, 4)]) {
+  for (const candidate of fontSizes.slice(0, 4)) {
     size = candidate;
     if (lineHeight(size) <= h * .42 && measure('12', size) <= w * .60) break;
   }
@@ -60,8 +59,7 @@ function render(timestamp) {
   const label = (text, lx, ly, fs, weight = 400) => {
     font(fs, weight); ctx.fillStyle = ink;
     // Roboto's line box includes ascent above its cap height, as the LVGL labels do.
-    if (fs === watchSize) { ctx.textBaseline = 'alphabetic'; ctx.fillText(text, lx, ly + watchAscent); }
-    else ctx.fillText(text, lx, ly + fs * .08);
+    ctx.fillText(text, lx, ly + fs * .08);
   };
   ['12', '3', '6', '9'].forEach((text, i) => {
     const width = measure(text, size);
@@ -69,10 +67,9 @@ function render(timestamp) {
     const ly = i === 0 ? y + inset : i === 2 ? y + h - inset - height : cy - height / 2;
     label(text, lx, ly, size);
   });
-  const date = new Date(Number(state.now) + performance.now() - received);
   const utc = o.timezone === 'utc', get = key => date[`${utc ? 'getUTC' : 'get'}${key}`]();
   const hour = get('Hours'), minute = get('Minutes'), second = get('Seconds');
-  const fraction = o.motion === 'tick' ? 0 : get('Milliseconds') / 1000;
+  const fraction = 0;
   const day = get('Date'), month = get('Month'), year = get('FullYear');
   if (o.date !== false) {
     const right = (o.date_position || 'bottom_left').includes('right'), top = (o.date_position || '').includes('top');
@@ -115,7 +112,7 @@ window.addEventListener('message', event => {
   if (event.source !== parent || event.data?.type !== 'tessera:preview') return;
   state = event.data; received = performance.now(); last = -Infinity;
 });
-document.fonts.ready.then(() => {
+Promise.all([400, 500, 700].map(weight => document.fonts.load(`${weight} 100px WatchRoboto`))).then(() => {
   parent.postMessage({ type: 'tessera:preview-ready' }, '*');
   requestAnimationFrame(render);
 });

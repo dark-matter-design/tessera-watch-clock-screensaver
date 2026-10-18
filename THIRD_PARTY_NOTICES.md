@@ -4,7 +4,7 @@
 
 The hand proportions and layout mathematics are adapted from [dark-matter-design/kiosk-satellite-watch-clock-screensaver](https://github.com/dark-matter-design/kiosk-satellite-watch-clock-screensaver), revision `f81debb5edf5405116f6b2cf51a2245e0ab77c9a`.
 
-Licensed under Apache License 2.0, reproduced in LICENSE. Modified for native LVGL rendering, Tessera's theme, screen clock and screensaver lifecycle and animation callbacks. No Java SDK or Android assets are included.
+Licensed under Apache License 2.0, reproduced in LICENSE. Modified for native LVGL rendering, Tessera's theme, screen clock and standard screensaver lifecycle. No Java SDK or Android assets are included.
 
 Copyright 2026 dark-matter-design. Port modifications copyright 2026 dark-matter-design.
 
@@ -20,4 +20,4 @@ The MIT license and its copyright notice are reproduced in `licenses/Tessera-MIT
 
 ## Roboto browser-preview font
 
-The self-contained `previews/watch.html` embeds Tessera's Roboto Regular font, from `fonts/Roboto-400.ttf`, under SIL Open Font License 1.1. Its license is reproduced in `licenses/Roboto-OFL.txt`. It adds no font to the device firmware.
+The self-contained `previews/watch.html` embeds Tessera's Roboto Regular, Medium and Bold fonts, from `fonts/Roboto-400.ttf`, `Roboto-500.ttf` and `Roboto-700.ttf`, under SIL Open Font License 1.1. Its license is reproduced in `licenses/Roboto-OFL.txt`. It adds no font to the device firmware.

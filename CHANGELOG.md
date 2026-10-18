@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1 - 2026-10-18
+- Restores compatibility with standard Tessera 0.4.89 and plugin API 0.14; no fork or firmware override is required.
+- Hands update once per second. Removes the 30/60 FPS setting and animation interpolation.
+- Uses standard built-in numeral fonts and reads face options when the screensaver opens, without fork-only callbacks.
+- Keeps the face colours, coloured background, date sizes, layouts, alignment and burn-in drift.
+
 ## 0.4.0 - 2026-10-18
 - Restores oversized numerals with the core's new large built-in Roboto digit step, rendered at native resolution.
 - Updates the interactive preview and firmware screenshots to match.
