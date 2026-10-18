@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "watch_clock.h"
 #include "geometry.h"
+#include "numerals.h"
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
@@ -16,27 +17,11 @@ class WatchSaver : public tessera::Saver {
  public:
   explicit WatchSaver(const tessera::Plugin *plugin) : plugin_(plugin) {}
   void show(const tessera::SaverContext &c) override {
-    parent_ = c.parent; width_ = c.width; height_ = c.height;
-    face_ = lv_obj_create(parent_);
-    lv_obj_remove_style_all(face_);
-    lv_obj_remove_flag(face_, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_remove_flag(face_, LV_OBJ_FLAG_SCROLLABLE);
-    for (auto &label : numerals_) label = ui::label(face_, Font::DIGITS, theme::INK);
-    date_ = ui::label(face_, Font::VALUE, theme::INK);
-    hour_ = line(face_, 1, theme::CLOCK_HAND);
-    minute_ = line(face_, 1, theme::CLOCK_HAND);
-    ring_ = ui::block(face_, theme::CAMERA_PAGE);
-    second_ = line(face_, 1, theme::CLOCK_HAND);
-    pivot_ = ui::block(face_, theme::CLOCK_HAND);
-    configure(c.options);
-  }
-
-  void configure(JsonObjectConst options) {
-    seconds_ = options["seconds"] | true;
-    date_enabled_ = options["date"] | true;
-    const bool inverted = options["invert"] | false;
-    const char *layout = options["layout"] | "original";
-    const char *alignment = options["alignment"] | "centre";
+    seconds_ = c.options["seconds"] | true;
+    date_enabled_ = c.options["date"] | true;
+    const bool inverted = c.options["invert"] | false;
+    const char *layout = c.options["layout"] | "original";
+    const char *alignment = c.options["alignment"] | "centre";
     int align = 0;
     if (!std::strcmp(alignment, "left")) align = 1;
     if (!std::strcmp(alignment, "right")) align = 2;
@@ -45,12 +30,12 @@ class WatchSaver : public tessera::Saver {
     // Reserve room for Tessera's millimetre drift at all scales and alignments.
     margin_ = ui::mm(2);
     const int margin = margin_;
-    face_height_ = height_ - 2 * margin;
-    face_width_ = width_ - 2 * margin;
-    art_ = geometry::layout(std::max(1, width_ - 2 * margin), std::max(1, height_ - 2 * margin),
-                            options["scale"] | 100.0f, !std::strcmp(layout, "adaptive"), align);
+    face_height_ = c.height - 2 * margin;
+    face_width_ = c.width - 2 * margin;
+    art_ = geometry::layout(std::max(1, c.width - 2 * margin), std::max(1, c.height - 2 * margin),
+                            c.options["scale"] | 100.0f, !std::strcmp(layout, "adaptive"), align);
     cx_ = art_.x + art_.width / 2; cy_ = art_.y + art_.height / 2;
-    const char *colour = options["numerals"] | "green";
+    const char *colour = c.options["numerals"] | "green";
     theme::Role role = theme::MARK_GREEN;
     if (!std::strcmp(colour, "white")) role = theme::QR_LIGHT;
     if (!std::strcmp(colour, "blue")) role = theme::MARK_BLUE;
@@ -59,62 +44,50 @@ class WatchSaver : public tessera::Saver {
     const theme::Role background = inverted ? role : theme::CAMERA_PAGE;
     const theme::Role ink = inverted ? theme::QR_DARK : role;
     const theme::Role hand_ink = inverted && !std::strcmp(colour, "white") ? theme::QR_DARK : theme::CLOCK_HAND;
-    lv_obj_set_style_bg_color(parent_, ui::color(background), 0);
-    lv_obj_set_style_bg_opa(parent_, LV_OPA_COVER, 0);
-    lv_obj_set_size(face_, face_width_, face_height_);
+    lv_obj_set_style_bg_color(c.parent, ui::color(background), 0);
+    lv_obj_set_style_bg_opa(c.parent, LV_OPA_COVER, 0);
+    // Keep the solid background fixed. Move only this inset transparent group,
+    // so inversion fills the glass without a black stripe at the drifted edge.
+    face_ = lv_obj_create(c.parent);
+    lv_obj_remove_style_all(face_);
+    lv_obj_remove_flag(face_, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_remove_flag(face_, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_size(face_, c.width - 2 * margin, c.height - 2 * margin);
     lv_obj_set_pos(face_, margin, margin);
-    const char *digits[] = {"12", "3", "6", "9"};
-    const int inset = std::max(1, static_cast<int>(2 * art_.unit));
-    numeral_font_ = Font::DIGITS;
-    for (auto font : {Font::DIGITS, Font::VALUE, Font::HEADLINE, Font::TITLE}) {
-      numeral_font_ = font;
-      if (ui::line_height(font) <= art_.height * .42f && ui::text_width("12", font) <= art_.width * .60f) break;
-    }
-    const int height = ui::line_height(numeral_font_);
-    for (int i = 0; i < 4; ++i) {
-      auto *label = numerals_[i];
-      ui::set_text(label, digits[i]); ui::set_font(label, numeral_font_); ui::set_color(label, ink);
-      const int width = ui::text_width(digits[i], numeral_font_);
-      lv_obj_set_size(label, width, height);
-      const int x = i == 1 ? art_.x + art_.width - inset - width : i == 3 ? art_.x + inset : cx_ - width / 2;
-      const int y = i == 0 ? art_.y + inset : i == 2 ? art_.y + art_.height - inset - height : cy_ - height / 2;
-      lv_obj_set_pos(label, x, y);
-    }
-    const char *position = options["date_position"] | "bottom_left";
+    numeral(face_, geometry::NUMERAL_0, points_0_, 10 + art_.dx, 2, ink);
+    numeral(face_, geometry::NUMERAL_1, points_1_, 10 + art_.dx, 2, ink);
+    numeral(face_, geometry::NUMERAL_2, points_2_, 2, -13 + art_.dy, ink);
+    numeral(face_, geometry::NUMERAL_3, points_3_, 14 + 2 * art_.dx, -13 + art_.dy, ink);
+    numeral(face_, geometry::NUMERAL_4, points_4_, 10 + art_.dx, -4 + 2 * art_.dy, ink);
+    const char *position = c.options["date_position"] | "bottom_left";
     date_right_ = std::strstr(position, "right") != nullptr;
     date_top_ = std::strstr(position, "top") != nullptr;
-    const char *format = options["date_format"] | "weekday";
+    const char *format = c.options["date_format"] | "weekday";
     date_format_ = !std::strcmp(format, "month") ? 1 : !std::strcmp(format, "numeric") ? 2 : 0;
-    const char *date_size = options["date_size"] | "large";
+    const char *date_size = c.options["date_size"] | "large";
     date_size_ = !std::strcmp(date_size, "small") ? 0 : !std::strcmp(date_size, "medium") ? 1 : 2;
-    utc_ = !std::strcmp(options["timezone"] | "screen", "utc");
-    ui::set_color(date_, ink);
-    date_text_[0] = 0;
-    for (auto *part : {hour_, minute_}) {
-      lv_obj_set_style_line_width(part, std::max(1, static_cast<int>(6.2f * art_.unit)), 0);
-      lv_obj_set_style_line_color(part, ui::color(hand_ink), 0);
-    }
-    ui::set_fill(ring_, tessera::Tone::NORMAL, background);
+    utc_ = !std::strcmp(c.options["timezone"] | "screen", "utc");
+    date_ = ui::label(face_, Font::VALUE, ink);
+    lv_obj_add_flag(date_, LV_OBJ_FLAG_HIDDEN);
+    hour_ = line(face_, 6.2f * art_.unit, hand_ink);
+    minute_ = line(face_, 6.2f * art_.unit, hand_ink);
+    ring_ = ui::block(face_, background);
     const int diameter = std::max(3, static_cast<int>(9.2f * art_.unit));
     lv_obj_set_size(ring_, diameter, diameter);
     lv_obj_set_pos(ring_, static_cast<int>(cx_ - diameter / 2.0f), static_cast<int>(cy_ - diameter / 2.0f));
     lv_obj_set_style_radius(ring_, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_border_width(ring_, std::max(1, static_cast<int>(1.2f * art_.unit)), 0);
     lv_obj_set_style_border_color(ring_, ui::color(hand_ink), 0);
-    lv_obj_set_style_line_width(second_, std::max(1, static_cast<int>(.85f * art_.unit)), 0);
-    lv_obj_set_style_line_color(second_, ui::color(inverted ? theme::QR_DARK : hand_ink), 0);
-    ui::set_fill(pivot_, tessera::Tone::NORMAL, hand_ink);
+    second_ = line(face_, .85f * art_.unit, inverted ? theme::QR_DARK : hand_ink);
+    pivot_ = ui::block(face_, hand_ink);
     const int dot = std::max(2, static_cast<int>(3.6f * art_.unit));
     lv_obj_set_size(pivot_, dot, dot);
     lv_obj_set_pos(pivot_, static_cast<int>(cx_ - dot / 2.0f), static_cast<int>(cy_ - dot / 2.0f));
     lv_obj_set_style_radius(pivot_, LV_RADIUS_CIRCLE, 0);
-    on_tick(tessera::epoch());
+    set_hands_visible(false);
   }
 
-  void on_tick(uint32_t epoch) override { paint_time(epoch); }
-
- private:
-  void paint_time(uint32_t epoch) {
+  void on_tick(uint32_t epoch) override {
     const auto drift = tessera::drift(epoch);
     lv_obj_set_pos(face_, margin_ + drift.x, margin_ + drift.y);
     if (!epoch) {
@@ -136,9 +109,9 @@ class WatchSaver : public tessera::Saver {
     update_hand(minute_, minute_points_, 82, 10, a.minute);
     if (seconds_) update_hand(second_, second_points_, 91, 13, a.second);
     if (date_enabled_) paint_date(now);
-    else visible(date_, false);
   }
 
+ private:
   static lv_obj_t *line(lv_obj_t *parent, float width, theme::Role role) {
     auto *part = lv_line_create(parent);
     lv_obj_remove_flag(part, LV_OBJ_FLAG_CLICKABLE);
@@ -146,6 +119,23 @@ class WatchSaver : public tessera::Saver {
     lv_obj_set_style_line_color(part, ui::color(role), 0);
     lv_obj_set_style_line_rounded(part, true, 0);
     return part;
+  }
+  template<size_t N>
+  void numeral(lv_obj_t *parent, const geometry::Point (&source)[N], lv_point_precise_t (&points)[N],
+               float x, float y, theme::Role role) {
+    int left = 100000, top = 100000;
+    for (size_t i = 0; i < N; ++i) {
+      points[i].x = std::lround(art_.x + (source[i].x + x) * art_.unit);
+      points[i].y = std::lround(art_.y + (source[i].y + y) * art_.unit);
+      left = std::min(left, static_cast<int>(points[i].x));
+      top = std::min(top, static_cast<int>(points[i].y));
+    }
+    for (auto &p : points) {
+      p.x -= left; p.y -= top;
+    }
+    auto *part = line(parent, 6.4f * art_.unit, role);
+    lv_line_set_points(part, points, N);
+    lv_obj_set_pos(part, left, top);
   }
   void update_hand(lv_obj_t *part, lv_point_precise_t (&points)[2], float length, float tail, float angle) {
     const auto end = geometry::hand(cx_, cy_, length * art_.unit, angle);
@@ -191,9 +181,14 @@ class WatchSaver : public tessera::Saver {
     ui::set_text(date_, text);
     const int inset = static_cast<int>(14 * art_.unit);
     const int room = std::max(1, static_cast<int>(art_.width) - 2 * inset);
-    // The corner must clear the native 12/6 label's full box, including its font's line height.
-    const int numeral_width = ui::text_width(date_top_ ? "12" : "6", numeral_font_);
-    const int corner = std::max(1, (static_cast<int>(art_.width) - numeral_width) / 2 - inset - ui::px(4));
+    // Long formats and small scales step down to a built-in font that fits.
+    // Prefer a corner-sized label so it remains clear of the large 6 and 12.
+    // Clear the actual 12/6 outlines, including their half-stroke. The top
+    // left corner is narrower because the diagonal of the 1 reaches left.
+    const float left_outline = art_.x + ((date_top_ ? 54 : 72) + 10 + art_.dx - 3.2f) * art_.unit;
+    const float right_outline = art_.x + ((date_top_ ? 137 : 135) + 10 + art_.dx + 3.2f) * art_.unit;
+    const int corner = std::max(1, static_cast<int>(date_right_ ? art_.x + art_.width - inset - right_outline
+                                                              : left_outline - art_.x - inset));
     const Font fonts[] = {Font::VALUE, Font::HEADLINE, Font::TITLE, Font::BODY};
     const int first = date_size_ == 0 ? 2 : date_size_ == 1 ? 1 : 0;
     Font font = Font::BODY;
@@ -228,16 +223,13 @@ class WatchSaver : public tessera::Saver {
     visible(date_, true);
   }
   const tessera::Plugin *plugin_;
-  lv_obj_t *parent_{};
-  int width_ = 0, height_ = 0;
-  Font numeral_font_ = Font::DIGITS;
   geometry::Layout art_{};
   float cx_ = 0, cy_ = 0;
   bool seconds_ = true, date_enabled_ = true, date_right_ = false, date_top_ = false, utc_ = false;
   int date_format_ = 0;
   int date_size_ = 2, margin_ = 0, face_height_ = 0, face_width_ = 0;
   char date_text_[64]{};
-  lv_obj_t *numerals_[4]{};
+  lv_point_precise_t points_0_[3]{}, points_1_[26]{}, points_2_[73]{}, points_3_[49]{}, points_4_[61]{};
   lv_point_precise_t hour_points_[2]{}, minute_points_[2]{}, second_points_[2]{};
   lv_obj_t *face_{}, *hour_{}, *minute_{}, *second_{}, *ring_{}, *pivot_{}, *date_{};
 };

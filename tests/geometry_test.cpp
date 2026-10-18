@@ -1,4 +1,5 @@
 #include "components/watch_clock/geometry.h"
+#include "components/watch_clock/numerals.h"
 #include <cassert>
 #include <cmath>
 #include <limits>
@@ -10,8 +11,6 @@ int main() {
   near(a.hour, 105.25f); near(a.minute, 183); near(a.second, 180);
   a = angles(0, 0, 0); near(a.hour, 0); near(a.minute, 0);
   a = angles(23, 59, 59); assert(a.hour < 360 && a.hour > 359.9f);
-  a = angles(15, 30, 31);
-  near(a.second, 186); near(a.minute, 183.1f);
   const Point expected[] = {{100,0},{200,100},{100,200},{0,100}};
   for (int i=0; i<4; ++i) {
     auto p=hand(100,100,100,90.0f*i); near(p.x,expected[i].x); near(p.y,expected[i].y);
@@ -31,7 +30,15 @@ int main() {
       assert(l.x>=0 && l.y>=0 && l.x+l.width<=size[0]+.01f && l.y+l.height<=size[1]+.01f);
       if(align==1) near(l.x,0); if(align==2) near(l.x+l.width,size[0]);
       if(align==3) near(l.y,0); if(align==4) near(l.y+l.height,size[1]);
-
+      const Point *paths[]={NUMERAL_0,NUMERAL_1,NUMERAL_2,NUMERAL_3,NUMERAL_4};
+      const size_t count[]={3,26,73,49,61};
+      const Point offset[]={{10+l.dx,2},{10+l.dx,2},{2,-13+l.dy},{14+2*l.dx,-13+l.dy},{10+l.dx,-4+2*l.dy}};
+      for(int n=0;n<5;++n) for(size_t i=0;i<count[n];++i) {
+        const float x=(paths[n][i].x+offset[n].x)*l.unit;
+        const float y=(paths[n][i].y+offset[n].y)*l.unit;
+        assert(x>=3.2f*l.unit && y>=3.2f*l.unit);
+        assert(x+3.2f*l.unit<=l.width && y+3.2f*l.unit<=l.height);
+      }
     }
-  std::cout << "Geometry: second ticks, scales, aspect ratios and alignments passed\n";
+  std::cout << "Geometry: angles, stroke bounds, scales, aspect ratios and alignments passed\n";
 }

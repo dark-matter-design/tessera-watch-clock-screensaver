@@ -1,5 +1,6 @@
 // Browser preview of the native face. No device actions, network or parent DOM access.
-// Colours mirror Tessera theme roles; typography uses the bundled Tessera Roboto fonts.
+// Colours mirror Tessera theme roles; numeral points match the native polylines.
+const numeralPoints = /* NUMERAL_POINTS */ [];
 const canvas = document.querySelector('canvas');
 const ctx = canvas.getContext('2d');
 let state = { options: {}, size: { width: 480, height: 480 }, now: Date.now() };
@@ -42,22 +43,21 @@ function render(timestamp) {
   const hand = o.invert && o.numerals === 'white' ? '#000000' : '#ffffff';
   ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
   ctx.save(); ctx.translate(margin + Math.round(Math.cos(driftAngle) * driftRadius), margin + Math.round(Math.sin(driftAngle) * driftRadius));
-  let size = fontSizes[0];
-  for (const candidate of fontSizes.slice(0, 4)) {
-    size = candidate;
-    if (lineHeight(size) <= h * .42 && measure('12', size) <= w * .60) break;
-  }
-  const inset = Math.max(1, Math.floor(2 * u)), height = lineHeight(size);
   const label = (text, lx, ly, fs, weight = 400) => {
     font(fs, weight); ctx.fillStyle = ink;
     // Roboto's line box includes ascent above its cap height, as the LVGL labels do.
     ctx.fillText(text, lx, ly + fs * .08);
   };
-  ['12', '3', '6', '9'].forEach((text, i) => {
-    const width = measure(text, size);
-    const lx = i === 1 ? x + w - inset - width : i === 3 ? x + inset : cx - width / 2;
-    const ly = i === 0 ? y + inset : i === 2 ? y + h - inset - height : cy - height / 2;
-    label(text, lx, ly, size);
+  const dx = (w / u - 220) / 2, dy = (h / u - 220) / 2;
+  const offsets = [[10 + dx, 2], [10 + dx, 2], [2, -13 + dy], [14 + 2 * dx, -13 + dy], [10 + dx, -4 + 2 * dy]];
+  numeralPoints.forEach((points, i) => {
+    ctx.beginPath();
+    points.forEach(([px, py], n) => {
+      const xx = Math.round(x + (px + offsets[i][0]) * u), yy = Math.round(y + (py + offsets[i][1]) * u);
+      if (n === 0) ctx.moveTo(xx, yy); else ctx.lineTo(xx, yy);
+    });
+    ctx.lineWidth = Math.max(1, Math.round(6.4 * u)); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.strokeStyle = ink; ctx.stroke();
   });
   const utc = o.timezone === 'utc', get = key => date[`${utc ? 'getUTC' : 'get'}${key}`]();
   const hour = get('Hours'), minute = get('Minutes'), second = get('Seconds');
@@ -69,7 +69,9 @@ function render(timestamp) {
       o.date_format === 'month' ? `${day} ${['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][month]}` :
       `${['SUN','MON','TUE','WED','THU','FRI','SAT'][get('Day')]} ${day}`;
     const pad = Math.floor(14 * u), room = Math.max(1, w - 2 * pad);
-    const corner = Math.max(1, (w - measure(top ? '12' : '6', size)) / 2 - pad - 4 * look);
+    const leftOutline = x + ((top ? 54 : 72) + 10 + dx - 3.2) * u;
+    const rightOutline = x + ((top ? 137 : 135) + 10 + dx + 3.2) * u;
+    const corner = Math.max(1, right ? x + w - pad - rightOutline : leftOutline - x - pad);
     const choices = fontSizes.slice(1), first = o.date_size === 'small' ? 2 : o.date_size === 'medium' ? 1 : 0;
     const weights = [500, 500, 700, 400];
     let fs = choices[3], weight = 400;

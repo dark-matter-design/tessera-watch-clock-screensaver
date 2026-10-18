@@ -1,20 +1,26 @@
 # Validation
 
-## Current version: 0.4.1, standard Tessera
+## Current version: 0.4.2, standard Tessera
 
-Version 0.4.1 targets unmodified upstream Tessera 0.4.89, firmware 0.57.0, plugin API 0.14. CI pins the firmware
+Version 0.4.2 targets unmodified upstream Tessera 0.4.89, firmware 0.57.0, plugin API 0.14. CI pins the firmware
 and checker to `MaxGramser/homeassistant_espscreen` revision `9f6ab3c68d420f454fb905466696063b1d789049`.
 No animation callback, live-options callback, custom font step or fork patch is used.
 
 Hands update through `on_tick(epoch)` once per second. Options are read when the screensaver opens, so wake the
-screen and enter standby again after changing them. Numerals use standard built-in fonts and are smaller than the
-fork-only oversized numerals. Colours, background inversion, date sizes, UTC, layout, alignment and drift remain.
+screen and enter standby again after changing them. Numerals are the original scalable polylines, with no font-size
+limit or custom font. The date uses standard built-in fonts. Colours, inversion, date sizes, UTC, layout, alignment
+and drift remain. The saver budget is 6656 bytes for twelve LVGL objects, retained numeral/hand points and members.
+
+The standard Clock panel intentionally renders plugin faces as icon/example text. It has no image or HTML-preview
+loader. This plugin can supply its Plugins-page store image, but cannot replace that panel without an app change.
 
 The official manifest checker passes against upstream API 0.14. Geometry tests cover second ticks, scales, aspect
 ratios and alignment. Current CI runs five strict real-firmware benches, generates store imagery and checks ESP32
 code generation from standard upstream URLs. Its 80 screenshots cover eight scenarios and light/dark themes on
 CYD, Guition 4-inch, both 7-inch models and the 10.1-inch model. Fork-only timer and live-settings tests are no longer
 part of validation. Physical device checks remain necessary; a desktop render is not a hardware test.
+
+### Previous 0.4.1 validation
 
 On 18 October 2026 (Australia/Sydney), [CI run 39085654714](https://github.com/dark-matter-design/tessera-watch-clock-screensaver/actions/runs/39085654714)
 passed all five strict upstream firmware benches, the manifest/geometry checks, upstream ESP32 code generation and

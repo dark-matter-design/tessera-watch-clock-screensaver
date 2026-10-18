@@ -1,5 +1,5 @@
 id: watch_clock
-version: 0.4.1
+version: 0.4.2
 api: '0.14'
 icon: clock-outline
 maintainer: dark-matter-design
@@ -16,7 +16,7 @@ savers:
   name: saver_name
   icon: clock-outline
   step: clock
-  memory: 4608
+  memory: 6656
   example: saver_example
   options:
   - id: numerals

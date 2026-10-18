@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.2 - 2026-10-18
+- Restores the original large vector numerals, which scale with the face without custom Tessera fonts or firmware.
+- Keeps standard Tessera API 0.14 compatibility and once-per-second ticking.
+- Documents standard Tessera's option-refresh and text-only plugin-preview limitations.
+
 ## 0.4.1 - 2026-10-18
 - Restores compatibility with standard Tessera 0.4.89 and plugin API 0.14; no fork or firmware override is required.
 - Hands update once per second. Removes the 30/60 FPS setting and animation interpolation.

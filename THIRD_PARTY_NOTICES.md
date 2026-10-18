@@ -2,6 +2,8 @@
 
 ## Kiosk Satellite Watch Clock
 
+The large numeral outlines and sampled native polylines are also adapted from the Apache-2.0 source below.
+
 The hand proportions and layout mathematics are adapted from [dark-matter-design/kiosk-satellite-watch-clock-screensaver](https://github.com/dark-matter-design/kiosk-satellite-watch-clock-screensaver), revision `f81debb5edf5405116f6b2cf51a2245e0ab77c9a`.
 
 Licensed under Apache License 2.0, reproduced in LICENSE. Modified for native LVGL rendering, Tessera's theme, screen clock and standard screensaver lifecycle. No Java SDK or Android assets are included.
