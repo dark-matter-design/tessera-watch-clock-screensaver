@@ -1,5 +1,12 @@
 # Third-party notices
 
+## Supplied numeral outline source
+
+The filled numeral contours in `components/watch_clock/numerals.h` and `previews/numerals.json` were extracted from
+[SF-Pro-Rounded-Bold.otf](https://raw.githubusercontent.com/sahibjotsaggu/San-Francisco-Pro-Fonts/master/SF-Pro-Rounded-Bold.otf),
+supplied by the user. The source file is not bundled. Its SHA256 is recorded in the generated header. The extraction
+script and scan-conversion renderer are plugin code; the numeral geometry derives from that supplied font.
+
 ## Kiosk Satellite Watch Clock
 
 The large numeral outlines and sampled native polylines are also adapted from the Apache-2.0 source below.

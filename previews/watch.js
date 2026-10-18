@@ -1,6 +1,6 @@
 // Browser preview of the native face. No device actions, network or parent DOM access.
-// Colours mirror Tessera theme roles; numeral points match the native polylines.
-const numeralPoints = /* NUMERAL_POINTS */ [];
+// Filled contours mirror the native glyph data; the OTF is not embedded.
+const numeralGlyphs = /* NUMERAL_POINTS */ [];
 const canvas = document.querySelector('canvas');
 const ctx = canvas.getContext('2d');
 let state = { options: {}, size: { width: 480, height: 480 }, now: Date.now() };
@@ -48,16 +48,26 @@ function render(timestamp) {
     // Roboto's line box includes ascent above its cap height, as the LVGL labels do.
     ctx.fillText(text, lx, ly + fs * .08);
   };
-  const dx = (w / u - 220) / 2, dy = (h / u - 220) / 2;
-  const offsets = [[10 + dx, 2], [10 + dx, 2], [2, -13 + dy], [14 + 2 * dx, -13 + dy], [10 + dx, -4 + 2 * dy]];
-  numeralPoints.forEach((points, i) => {
+  const numeralBoxes = numeralGlyphs.map((glyph, i) => {
+    const height = (i === 0 ? 74 : 82) * u, width = glyph.width * height;
+    let gx = x + (w - width) / 2, gy = y + (h - height) / 2;
+    if (i === 0) gy = y + 4 * u;
+    if (i === 1) gx = x + w - 4 * u - width;
+    if (i === 2) gy = y + h - 4 * u - height;
+    if (i === 3) gx = x + 4 * u;
+    return { x: gx, y: gy, width, height };
+  });
+  numeralGlyphs.forEach((glyph, i) => {
+    const box = numeralBoxes[i];
     ctx.beginPath();
-    points.forEach(([px, py], n) => {
-      const xx = Math.round(x + (px + offsets[i][0]) * u), yy = Math.round(y + (py + offsets[i][1]) * u);
-      if (n === 0) ctx.moveTo(xx, yy); else ctx.lineTo(xx, yy);
+    glyph.contours.forEach(points => {
+      points.forEach(([px, py], n) => {
+        const xx = Math.round(box.x) + px * box.height, yy = Math.round(box.y) + py * box.height;
+        if (n === 0) ctx.moveTo(xx, yy); else ctx.lineTo(xx, yy);
+      });
+      ctx.closePath();
     });
-    ctx.lineWidth = Math.max(1, Math.round(6.4 * u)); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    ctx.strokeStyle = ink; ctx.stroke();
+    ctx.fillStyle = ink; ctx.fill('evenodd');
   });
   const utc = o.timezone === 'utc', get = key => date[`${utc ? 'getUTC' : 'get'}${key}`]();
   const hour = get('Hours'), minute = get('Minutes'), second = get('Seconds');
@@ -69,8 +79,8 @@ function render(timestamp) {
       o.date_format === 'month' ? `${day} ${['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][month]}` :
       `${['SUN','MON','TUE','WED','THU','FRI','SAT'][get('Day')]} ${day}`;
     const pad = Math.floor(14 * u), room = Math.max(1, w - 2 * pad);
-    const leftOutline = x + ((top ? 54 : 72) + 10 + dx - 3.2) * u;
-    const rightOutline = x + ((top ? 137 : 135) + 10 + dx + 3.2) * u;
+    const number = numeralBoxes[top ? 0 : 2];
+    const leftOutline = number.x, rightOutline = number.x + number.width;
     const corner = Math.max(1, right ? x + w - pad - rightOutline : leftOutline - x - pad);
     const choices = fontSizes.slice(1), first = o.date_size === 'small' ? 2 : o.date_size === 'medium' ? 1 : 0;
     const weights = [500, 500, 700, 400];

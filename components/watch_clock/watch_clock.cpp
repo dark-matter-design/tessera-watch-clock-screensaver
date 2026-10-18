@@ -2,6 +2,7 @@
 #include "watch_clock.h"
 #include "geometry.h"
 #include "numerals.h"
+#include "outline_raster.h"
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
@@ -54,11 +55,7 @@ class WatchSaver : public tessera::Saver {
     lv_obj_remove_flag(face_, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_size(face_, c.width - 2 * margin, c.height - 2 * margin);
     lv_obj_set_pos(face_, margin, margin);
-    numeral(face_, geometry::NUMERAL_0, points_0_, 10 + art_.dx, 2, ink);
-    numeral(face_, geometry::NUMERAL_1, points_1_, 10 + art_.dx, 2, ink);
-    numeral(face_, geometry::NUMERAL_2, points_2_, 2, -13 + art_.dy, ink);
-    numeral(face_, geometry::NUMERAL_3, points_3_, 14 + 2 * art_.dx, -13 + art_.dy, ink);
-    numeral(face_, geometry::NUMERAL_4, points_4_, 10 + art_.dx, -4 + 2 * art_.dy, ink);
+    for (int i = 0; i < 4; ++i) numeral(face_, i, ink);
     const char *position = c.options["date_position"] | "bottom_left";
     date_right_ = std::strstr(position, "right") != nullptr;
     date_top_ = std::strstr(position, "top") != nullptr;
@@ -120,22 +117,46 @@ class WatchSaver : public tessera::Saver {
     lv_obj_set_style_line_rounded(part, true, 0);
     return part;
   }
-  template<size_t N>
-  void numeral(lv_obj_t *parent, const geometry::Point (&source)[N], lv_point_precise_t (&points)[N],
-               float x, float y, theme::Role role) {
-    int left = 100000, top = 100000;
-    for (size_t i = 0; i < N; ++i) {
-      points[i].x = std::lround(art_.x + (source[i].x + x) * art_.unit);
-      points[i].y = std::lround(art_.y + (source[i].y + y) * art_.unit);
-      left = std::min(left, static_cast<int>(points[i].x));
-      top = std::min(top, static_cast<int>(points[i].y));
-    }
-    for (auto &p : points) {
-      p.x -= left; p.y -= top;
-    }
-    auto *part = line(parent, 6.4f * art_.unit, role);
-    lv_line_set_points(part, points, N);
-    lv_obj_set_pos(part, left, top);
+  struct Number {
+    const geometry::Outline *glyph{};
+    float scale = 1;
+    lv_color_t color{};
+  };
+  static void draw_number(lv_event_t *event) {
+    auto *part = static_cast<lv_obj_t *>(lv_event_get_current_target(event));
+    const auto *number = static_cast<const Number *>(lv_event_get_user_data(event));
+    auto *layer = lv_event_get_layer(event);
+    lv_area_t bounds;
+    lv_obj_get_coords(part, &bounds);
+    const auto clip = layer->_clip_area;
+    const int left = std::max<int>(0, clip.x1 - bounds.x1);
+    const int top = std::max<int>(0, clip.y1 - bounds.y1);
+    const int right = std::min<int>(bounds.x2 - bounds.x1, clip.x2 - bounds.x1);
+    const int bottom = std::min<int>(bounds.y2 - bounds.y1, clip.y2 - bounds.y1);
+    lv_draw_rect_dsc_t d;
+    lv_draw_rect_dsc_init(&d);
+    d.bg_color = number->color;
+    outline::paint(*number->glyph, number->scale, left, top, right, bottom,
+      [&](int x1, int x2, int y, uint8_t alpha) {
+        d.bg_opa = alpha;
+        const lv_area_t row{bounds.x1 + x1, bounds.y1 + y, bounds.x1 + x2, bounds.y1 + y};
+        lv_draw_rect(layer, &d, &row);
+      });
+  }
+  void numeral(lv_obj_t *parent, int index, theme::Role role) {
+    const auto box = outline::place(art_, index);
+    numeral_boxes_[index] = box;
+    auto &number = numbers_[index];
+    number.glyph = &geometry::OUTLINES[index];
+    number.scale = box.height;
+    number.color = ui::color(role);
+    auto *part = lv_obj_create(parent);
+    lv_obj_remove_style_all(part);
+    lv_obj_remove_flag(part, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_remove_flag(part, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_size(part, static_cast<int>(std::ceil(box.width)), static_cast<int>(std::ceil(box.height)));
+    lv_obj_set_pos(part, std::lround(box.x), std::lround(box.y));
+    lv_obj_add_event_cb(part, draw_number, LV_EVENT_DRAW_MAIN, &number);
   }
   void update_hand(lv_obj_t *part, lv_point_precise_t (&points)[2], float length, float tail, float angle) {
     const auto end = geometry::hand(cx_, cy_, length * art_.unit, angle);
@@ -185,8 +206,9 @@ class WatchSaver : public tessera::Saver {
     // Prefer a corner-sized label so it remains clear of the large 6 and 12.
     // Clear the actual 12/6 outlines, including their half-stroke. The top
     // left corner is narrower because the diagonal of the 1 reaches left.
-    const float left_outline = art_.x + ((date_top_ ? 54 : 72) + 10 + art_.dx - 3.2f) * art_.unit;
-    const float right_outline = art_.x + ((date_top_ ? 137 : 135) + 10 + art_.dx + 3.2f) * art_.unit;
+    const auto &number = numeral_boxes_[date_top_ ? 0 : 2];
+    const float left_outline = number.x;
+    const float right_outline = number.x + number.width;
     const int corner = std::max(1, static_cast<int>(date_right_ ? art_.x + art_.width - inset - right_outline
                                                               : left_outline - art_.x - inset));
     const Font fonts[] = {Font::VALUE, Font::HEADLINE, Font::TITLE, Font::BODY};
@@ -229,7 +251,8 @@ class WatchSaver : public tessera::Saver {
   int date_format_ = 0;
   int date_size_ = 2, margin_ = 0, face_height_ = 0, face_width_ = 0;
   char date_text_[64]{};
-  lv_point_precise_t points_0_[3]{}, points_1_[26]{}, points_2_[73]{}, points_3_[49]{}, points_4_[61]{};
+  Number numbers_[4]{};
+  outline::Box numeral_boxes_[4]{};
   lv_point_precise_t hour_points_[2]{}, minute_points_[2]{}, second_points_[2]{};
   lv_obj_t *face_{}, *hour_{}, *minute_{}, *second_{}, *ring_{}, *pivot_{}, *date_{};
 };

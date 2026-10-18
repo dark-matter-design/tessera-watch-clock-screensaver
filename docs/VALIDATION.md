@@ -1,15 +1,19 @@
 # Validation
 
-## Current version: 0.4.2, standard Tessera
+## Current version: 0.5.0, standard Tessera
 
-Version 0.4.2 targets unmodified upstream Tessera 0.4.89, firmware 0.57.0, plugin API 0.14. CI pins the firmware
+Version 0.5.0 targets unmodified upstream Tessera 0.4.89, firmware 0.57.0, plugin API 0.14. CI pins the firmware
 and checker to `MaxGramser/homeassistant_espscreen` revision `9f6ab3c68d420f454fb905466696063b1d789049`.
 No animation callback, live-options callback, custom font step or fork patch is used.
 
 Hands update through `on_tick(epoch)` once per second. Options are read when the screensaver opens, so wake the
-screen and enter standby again after changing them. Numerals are the original scalable polylines, with no font-size
-limit or custom font. The date uses standard built-in fonts. Colours, inversion, date sizes, UTC, layout, alignment
-and drift remain. The saver budget is 6656 bytes for twelve LVGL objects, retained numeral/hand points and members.
+screen and enter standby again after changing them. Numerals use filled glyph contours extracted from the supplied
+SF Pro Rounded Bold OTF. Curves are adaptively flattened to a source-space tolerance of half a font unit, and a
+coverage rasterizer blends boundaries at device resolution. Tests compare rendered coverage with signed contour
+areas (including holes), verify fractional-alpha pixels and clipped redraw consistency, and cover all layouts and
+scales. The 4608-byte saver budget holds eleven LVGL objects, four outline descriptors and hand point buffers.
+Numeral data stays in flash; rasterization uses fixed scratch space without an image buffer or runtime font.
+The date uses standard built-in fonts. Colours, inversion, UTC, layout, alignment and drift remain.
 
 The standard Clock panel intentionally renders plugin faces as icon/example text. It has no image or HTML-preview
 loader. This plugin can supply its Plugins-page store image, but cannot replace that panel without an app change.

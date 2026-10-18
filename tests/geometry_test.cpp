@@ -1,9 +1,11 @@
 #include "components/watch_clock/geometry.h"
 #include "components/watch_clock/numerals.h"
+#include "components/watch_clock/outline_raster.h"
 #include <cassert>
 #include <cmath>
 #include <limits>
 #include <iostream>
+#include <vector>
 using namespace esphome::watch_clock::geometry;
 void near(float a, float b) { assert(std::abs(a - b) < .001f); }
 int main() {
@@ -30,15 +32,39 @@ int main() {
       assert(l.x>=0 && l.y>=0 && l.x+l.width<=size[0]+.01f && l.y+l.height<=size[1]+.01f);
       if(align==1) near(l.x,0); if(align==2) near(l.x+l.width,size[0]);
       if(align==3) near(l.y,0); if(align==4) near(l.y+l.height,size[1]);
-      const Point *paths[]={NUMERAL_0,NUMERAL_1,NUMERAL_2,NUMERAL_3,NUMERAL_4};
-      const size_t count[]={3,26,73,49,61};
-      const Point offset[]={{10+l.dx,2},{10+l.dx,2},{2,-13+l.dy},{14+2*l.dx,-13+l.dy},{10+l.dx,-4+2*l.dy}};
-      for(int n=0;n<5;++n) for(size_t i=0;i<count[n];++i) {
-        const float x=(paths[n][i].x+offset[n].x)*l.unit;
-        const float y=(paths[n][i].y+offset[n].y)*l.unit;
-        assert(x>=3.2f*l.unit && y>=3.2f*l.unit);
-        assert(x+3.2f*l.unit<=l.width && y+3.2f*l.unit<=l.height);
+      for(int n=0;n<4;++n) {
+        const auto box = esphome::watch_clock::outline::place(l,n);
+        assert(box.x>=l.x && box.y>=l.y);
+        assert(box.x+box.width<=l.x+l.width+.01f && box.y+box.height<=l.y+l.height+.01f);
       }
     }
-  std::cout << "Geometry: angles, stroke bounds, scales, aspect ratios and alignments passed\n";
+  // Filled area must match the signed contour area, including holes. Coverage
+  // contains partial pixels, and clipping must preserve the same edge values.
+  for (const auto &glyph : OUTLINES) for (int scale : {20,80,257}) {
+    const int width = std::ceil(glyph.width*scale), height=scale;
+    std::vector<uint8_t> pixels(width*height);
+    esphome::watch_clock::outline::paint(glyph,scale,0,0,width-1,height-1,
+      [&](int x1,int x2,int y,uint8_t alpha) {
+        assert(x1>=0 && x2<width && y>=0 && y<height);
+        for(int x=x1;x<=x2;++x) pixels[y*width+x]=alpha;
+      });
+    double area=0, expected_area=0; int partial=0; size_t begin=0;
+    for(auto p:pixels) { area+=p/255.0; if(p>0 && p<255) ++partial; }
+    for(size_t c=0;c<glyph.contours;++c) {
+      auto previous=glyph.points[glyph.ends[c]-1];
+      for(size_t i=begin;i<glyph.ends[c];++i) {
+        auto p=glyph.points[i]; expected_area+=previous.x*p.y-p.x*previous.y; previous=p;
+      }
+      begin=glyph.ends[c];
+    }
+    expected_area=std::abs(expected_area)*scale*scale/2;
+    assert(std::abs(area-expected_area)<std::max(2.0,expected_area*.01));
+    assert(partial>0);
+    esphome::watch_clock::outline::paint(glyph,scale,3,4,width-4,height-5,
+      [&](int x1,int x2,int y,uint8_t alpha) {
+        assert(x1>=3 && x2<=width-4 && y>=4 && y<=height-5);
+        for(int x=x1;x<=x2;++x) assert(pixels[y*width+x]==alpha);
+      });
+  }
+  std::cout << "Geometry: angles, outline bounds, holes, coverage, clipping, scales and alignments passed\n";
 }

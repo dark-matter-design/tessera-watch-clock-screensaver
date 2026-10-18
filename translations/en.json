@@ -25,9 +25,9 @@
   },
   "app": {
     "name": "Watch Clock",
-    "summary": "A watch face with large vector numerals, ticking hands, a coloured date and flexible layouts.",
+    "summary": "A watch face with bold rounded numerals, ticking hands, a coloured date and flexible layouts.",
     "saver_name": "Watch Clock",
-    "saver_example": "Large vector numerals and hands that tick once per second. See Plugins for the face image.",
+    "saver_example": "Bold rounded vector numerals and ticking hands. See Plugins for the face image.",
     "numerals": "Face colour",
     "green": "Green",
     "white": "White",

@@ -1,12 +1,12 @@
 # Watch Clock for Tessera
 
-A native screensaver face for Tessera, ported from [Watch Clock for Kiosk Satellite](https://github.com/dark-matter-design/kiosk-satellite-watch-clock-screensaver). The large 12, 3, 6 and 9 are drawn as scalable vector strokes, with rounded contrasting hour and minute hands, a fine seconds hand and a coloured date. No browser, custom firmware font, image download or Android component is needed.
+A native screensaver face for Tessera, ported from [Watch Clock for Kiosk Satellite](https://github.com/dark-matter-design/kiosk-satellite-watch-clock-screensaver). The large 12, 3, 6 and 9 use filled vector outlines extracted from the supplied SF Pro Rounded Bold font, with rounded contrasting hands and a coloured date. The OTF file is not bundled. No browser, custom firmware font, image download or Android component is needed.
 
 ![Watch Clock rendered by the real Tessera firmware](store.png)
 
 Full firmware previews: [black-background face](docs/previews/guition-4-inch-black.png), [4-inch square](docs/previews/guition-4-inch.png), [7-inch](docs/previews/guition-7-inch.png), [10.1-inch adaptive](docs/previews/guition-10-inch-adaptive.png).
 
-**Works with standard Tessera 0.4.89 / firmware 0.57.0 (API 0.14).** Version 0.4.2 restores the original large vector numerals. No Tessera fork, compatibility patch or firmware-source override is needed.
+**Works with standard Tessera 0.4.89 / firmware 0.57.0 (API 0.14).** Version 0.5.0 adds filled rounded numeral outlines with coverage-based edge smoothing. No Tessera fork, compatibility patch or firmware-source override is needed.
 
 ## Set up
 
@@ -35,7 +35,7 @@ For folder installation, copy the manifest, `plugin.yaml`, `components/`, `trans
 | Date format | Short weekday and day (default), Day and short month, Numeric YYYY-MM-DD |
 | Time zone | Screen time zone (default, follows Tessera including DST), UTC |
 
-Adaptive spacing extends the composition on the longer axis, capped at 1.65 times its square dimension. Hands and large vector numerals keep the source proportions and scale with the clock instead of being limited by Tessera's font sizes. The date uses standard Tessera fonts. A small inset preserves Tessera's burn-in movement at every alignment. Long dates can use free space above or below a scaled clock to stay clear of the numerals. The date uses the largest built-in font that fits the selected size and corner; weekday and month abbreviations come from the plugin's translations (English included). Until the screen's clock is synchronised, the numerals remain visible and the hands and date are hidden.
+Adaptive spacing extends the composition on the longer axis, capped at 1.65 times its square dimension. Large numerals retain the supplied glyph proportions and scale with the clock. Their filled contours include the holes in 6 and 9. Adaptive subdivision limits curve error; scan conversion uses fractional horizontal coverage and four vertical samples per pixel at the actual display size. Scratch space is bounded: there is no full-glyph bitmap or runtime font engine. The date uses standard Tessera fonts. A small inset preserves Tessera's burn-in movement at every alignment. Long dates can use free space above or below a scaled clock to stay clear of the numerals. Until the screen's clock is synchronised, the numerals remain visible and the hands and date are hidden.
 
 ## Differences from Kiosk Satellite
 
@@ -65,11 +65,16 @@ The plugin is installed from source; no Kiosk Satellite ZIP, DEX or APK is used.
 
 ## Credits
 
-Original watch proportions: dark-matter-design's Kiosk Satellite Watch Clock, Apache-2.0. Tessera plugin scaffolding: MaxGramser's Tessera plugin template, MIT. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Independent community plugin; no proprietary Apple font or artwork is included.
+Original watch proportions: dark-matter-design's Kiosk Satellite Watch Clock, Apache-2.0. Numeral contour data: the user-supplied SF Pro Rounded Bold OTF, converted into geometric data without bundling the font. Tessera plugin scaffolding: MaxGramser's Tessera plugin template, MIT. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Independent community plugin.
 
 ## Preview in Tessera
 
-The plugin listing uses the generated `store.png` from the loaded plugin revision. Update the plugin to 0.4.2 and refresh Tessera to load its image. Standard Tessera's Clock drawer displays only an icon and the plugin's example text; it does not load `store.png` or the optional browser illustration there. Updating the plugin cannot change that panel. See the Plugins page or the full firmware screenshots linked above for the actual appearance. The optional editor integration under [compatibility/](compatibility/README.md) is historical and is not required to install or run this version.
+The plugin listing uses the generated `store.png` from the loaded plugin revision. Update the plugin to 0.5.0 and refresh Tessera to load its image. Standard Tessera's Clock drawer displays only an icon and the plugin's example text; it does not load `store.png` or the optional browser illustration there. Updating the plugin cannot change that panel. See the Plugins page or the full firmware screenshots linked above for the actual appearance. The optional editor integration under [compatibility/](compatibility/README.md) is historical and is not required to install or run this version.
+
+To regenerate the numeral data, install FontTools and run `python tools/extract_font_numerals.py /path/to/SF-Pro-Rounded-Bold.otf`.
+The extractor records the input SHA256 in `numerals.h`. Only the contours for 12, 3, 6 and 9 are committed. The optional
+browser illustration reads the same contours; `tools/generate_preview.py` also requires FontTools to subset its separate
+Roboto date fonts. The original centreline generator is retained as historical tooling and is not used for 0.5.0.
 
 Standard Tessera also passes a plugin's options only when the saver opens. Changes made while it is visible will
 appear after waking the screen and re-entering standby, or toggling the Clock step off and on. The plugin receives

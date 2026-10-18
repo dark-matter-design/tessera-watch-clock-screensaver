@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0 - 2026-10-18
+- Replaces the original stroke numerals with filled vector outlines extracted from the supplied SF Pro Rounded Bold font.
+- Adds coverage-based edge smoothing and adaptive curve subdivision at the screen's native resolution.
+- Includes only the extracted numeral data, without the OTF, a custom firmware font or a full-screen image buffer.
+- Keeps standard Tessera API 0.14, once-per-second ticking, colours, date controls, layout and burn-in drift.
+
 ## 0.4.2 - 2026-10-18
 - Restores the original large vector numerals, which scale with the face without custom Tessera fonts or firmware.
 - Keeps standard Tessera API 0.14 compatibility and once-per-second ticking.
